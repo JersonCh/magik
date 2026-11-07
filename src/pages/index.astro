@@ -7,7 +7,10 @@ import ProductCard from "../components/astro/ProductCard.astro"
 import PromoStrip from "../components/astro/PromoStrip.astro"
 import HowToBuy from "../components/astro/HowToBuy.astro"
 import BrandsStrip from "../components/astro/BrandsStrip.astro"
-import { products, categories } from "../data/products"
+import { getProducts, getCategories } from "../lib/db"
+
+const products = await getProducts(Astro.locals)
+const categories = await getCategories(Astro.locals)
 
 const featuredProducts = products.slice(0, 4)
 const newArrivals = products.slice(4, 8)
@@ -90,4 +93,3 @@ const newArrivals = products.slice(4, 8)
     <BrandsStrip />
   </main>
 </Layout>
-

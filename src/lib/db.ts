@@ -1,0 +1,178 @@
+import { products as fallbackProducts, categories as fallbackCategories, brands as fallbackBrands, WHATSAPP_NUMBER } from "../data/products"
+import type { Product } from "../data/products"
+import type { DbProduct, DbCategory, DbBrand, DbVariant, DbConfig } from "../types/database"
+
+export interface D1Database {
+  prepare(query: string): {
+    bind(...values: unknown[]): {
+      first<T = unknown>(colName?: string): Promise<T | null>
+      all<T = unknown>(): Promise<{ results: T[]; success: boolean }>
+      run(): Promise<{ success: boolean; meta: unknown }>
+    }
+    first<T = unknown>(colName?: string): Promise<T | null>
+    all<T = unknown>(): Promise<{ results: T[]; success: boolean }>
+    run(): Promise<{ success: boolean; meta: unknown }>
+  }
+}
+
+/**
+ * Obtiene el binding de Cloudflare D1 desde el contexto de Astro o entorno global
+ */
+export function getDb(runtimeEnv?: { DB?: D1Database } | unknown): D1Database | null {
+  if (runtimeEnv && typeof runtimeEnv === "object" && "DB" in runtimeEnv && (runtimeEnv as { DB: D1Database }).DB) {
+    return (runtimeEnv as { DB: D1Database }).DB
+  }
+  // @ts-expect-error global D1 binding check in Cloudflare Workers environment
+  if (typeof globalThis !== "undefined" && globalThis.DB) {
+    // @ts-expect-error global binding
+    return globalThis.DB as D1Database
+  }
+  return null
+}
+
+/**
+ * Mapea una fila de producto SQLite (DbProduct) al modelo Product de la interfaz
+ */
+export function mapDbProductToProduct(row: DbProduct, variants: DbVariant[] = []): Product {
+  const defaultVariant = variants.find((v) => v.stock > 0)?.nombre_variante || variants[0]?.nombre_variante
+
+  return {
+    id: row.id,
+    name: row.nombre,
+    brand: row.marca_nombre || "GENÉRICO",
+    model: row.modelo,
+    price: Number(row.precio),
+    oldPrice: row.precio_anterior ? Number(row.precio_anterior) : undefined,
+    image: row.imagen_principal,
+    category: row.categoria_nombre || "General",
+    stock: Boolean(row.stock),
+    badge: row.badge || undefined,
+    variant: defaultVariant,
+  }
+}
+
+/**
+ * Obtiene todos los productos (desde D1 o fallback en memoria)
+ */
+export async function getProducts(env?: unknown): Promise<Product[]> {
+  const db = getDb(env)
+  if (!db) return fallbackProducts
+
+  try {
+    const query = `
+      SELECT p.*, m.nombre AS marca_nombre, c.nombre AS categoria_nombre
+      FROM productos p
+      JOIN marcas m ON p.marca_id = m.id
+      JOIN categorias c ON p.categoria_id = c.id
+      WHERE p.activo = 1
+      ORDER BY p.id ASC
+    `
+    const { results } = await db.prepare(query).all<DbProduct>()
+    if (!results || results.length === 0) return fallbackProducts
+
+    // Cargar variantes para cada producto
+    const { results: allVariants } = await db
+      .prepare("SELECT * FROM variantes_producto WHERE activo = 1")
+      .all<DbVariant>()
+
+    return results.map((p) => {
+      const pVariants = (allVariants || []).filter((v) => v.producto_id === p.id)
+      return mapDbProductToProduct(p, pVariants)
+    })
+  } catch (error) {
+    console.warn("[D1] Error al obtener productos, usando fallback:", error)
+    return fallbackProducts
+  }
+}
+
+/**
+ * Obtiene un producto por su ID
+ */
+export async function getProductById(id: number, env?: unknown): Promise<Product | null> {
+  const db = getDb(env)
+  if (!db) {
+    return fallbackProducts.find((p) => p.id === id) || null
+  }
+
+  try {
+    const query = `
+      SELECT p.*, m.nombre AS marca_nombre, c.nombre AS categoria_nombre
+      FROM productos p
+      JOIN marcas m ON p.marca_id = m.id
+      JOIN categorias c ON p.categoria_id = c.id
+      WHERE p.id = ? AND p.activo = 1
+      LIMIT 1
+    `
+    const productRow = await db.prepare(query).bind(id).first<DbProduct>()
+    if (!productRow) return null
+
+    const { results: variants } = await db
+      .prepare("SELECT * FROM variantes_producto WHERE producto_id = ? AND activo = 1")
+      .bind(id)
+      .all<DbVariant>()
+
+    return mapDbProductToProduct(productRow, variants || [])
+  } catch (error) {
+    console.warn(`[D1] Error al obtener producto ${id}, usando fallback:`, error)
+    return fallbackProducts.find((p) => p.id === id) || null
+  }
+}
+
+/**
+ * Obtiene las categorías
+ */
+export async function getCategories(env?: unknown): Promise<[string, string, string][]> {
+  const db = getDb(env)
+  if (!db) return fallbackCategories
+
+  try {
+    const { results } = await db
+      .prepare("SELECT nombre, descripcion, imagen_url FROM categorias WHERE activo = 1 ORDER BY orden ASC")
+      .all<DbCategory>()
+
+    if (!results || results.length === 0) return fallbackCategories
+
+    return results.map((c) => [c.nombre, c.descripcion || c.nombre, (c.imagen_url || "").replace("/assets/", "")])
+  } catch (error) {
+    console.warn("[D1] Error al obtener categorías, usando fallback:", error)
+    return fallbackCategories
+  }
+}
+
+/**
+ * Obtiene la lista de marcas
+ */
+export async function getBrands(env?: unknown): Promise<string[]> {
+  const db = getDb(env)
+  if (!db) return fallbackBrands
+
+  try {
+    const { results } = await db
+      .prepare("SELECT nombre FROM marcas WHERE activo = 1 ORDER BY nombre ASC")
+      .all<DbBrand>()
+
+    if (!results || results.length === 0) return fallbackBrands
+    return results.map((m) => m.nombre)
+  } catch (error) {
+    console.warn("[D1] Error al obtener marcas, usando fallback:", error)
+    return fallbackBrands
+  }
+}
+
+/**
+ * Obtiene un valor de configuración de la tienda
+ */
+export async function getStoreConfig(key: string, defaultValue = "", env?: unknown): Promise<string> {
+  const db = getDb(env)
+  if (!db) {
+    if (key === "whatsapp_number") return WHATSAPP_NUMBER
+    return defaultValue
+  }
+
+  try {
+    const row = await db.prepare("SELECT valor FROM configuracion WHERE clave = ? LIMIT 1").bind(key).first<DbConfig>()
+    return row?.valor || defaultValue
+  } catch {
+    return defaultValue
+  }
+}

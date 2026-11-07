@@ -2,18 +2,19 @@
 import Layout from "../../layouts/Layout.astro"
 import ProductCard from "../../components/astro/ProductCard.astro"
 import ProductDetailInteractive from "../../components/react/ProductDetailInteractive"
-import { products } from "../../data/products"
+import { getProductById, getProducts } from "../../lib/db"
 
 export const prerender = false
 
 const { id } = Astro.params
-const product = products.find((p) => p.id === Number(id))
+const product = await getProductById(Number(id), Astro.locals)
 
 if (!product) {
   return Astro.redirect("/catalogo")
 }
 
-const relatedProducts = products
+const allProducts = await getProducts(Astro.locals)
+const relatedProducts = allProducts
   .filter((p) => p.id !== product.id)
   .slice(0, 3)
 ---
@@ -114,4 +115,3 @@ const relatedProducts = products
     </section>
   </main>
 </Layout>
-
