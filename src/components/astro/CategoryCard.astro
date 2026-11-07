@@ -1,0 +1,23 @@
+---
+interface Props {
+  name: string
+  label: string
+  image: string
+}
+
+const { name, label, image } = Astro.props
+---
+
+<a href={`/categorias`} class="category-card">
+  <span>
+    <img src={`/assets/${image}`} alt={label} loading="lazy" />
+  </span>
+  <b>{label}</b>
+  <small>
+    Explorar categoría
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width: 13px;">
+      <path d="M5 12h14m-5-5 5 5-5 5" />
+    </svg>
+  </small>
+</a>
+

@@ -1,0 +1,23 @@
+---
+import Layout from "../layouts/Layout.astro"
+import CartOrderSummary from "../components/react/CartOrderSummary"
+---
+
+<Layout title="Mi Pedido | Magik Barber Supply Tacna" currentPath="/pedido">
+  <main class="page shell">
+    <p class="breadcrumb">
+      <a href="/">Inicio</a> / Mi pedido
+    </p>
+
+    <div class="page-intro">
+      <p>RESUMEN DEL PEDIDO</p>
+      <h1>Revisa antes de enviar</h1>
+      <span>
+        Podrás confirmar disponibilidad, entrega y costo de envío por WhatsApp.
+      </span>
+    </div>
+
+    <CartOrderSummary client:load />
+  </main>
+</Layout>
+

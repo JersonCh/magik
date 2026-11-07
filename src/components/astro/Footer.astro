@@ -1,0 +1,56 @@
+---
+import { WHATSAPP_NUMBER } from "../../data/products"
+---
+
+<footer>
+  <div class="shell footer-grid">
+    <div class="footer-brand">
+      <span class="logo-crop">
+        <img src="/assets/9f199.png" alt="Magik Barber Supply" width="120" height="90" />
+      </span>
+      <p>Equipos para barbería, salón y cuidado personal.</p>
+      <b>Tacna, Perú</b>
+    </div>
+
+    <div>
+      <h3>Explora</h3>
+      <a href="/catalogo">Catálogo</a>
+      <a href="/categorias">Categorías</a>
+      <a href="/marcas">Marcas</a>
+      <a href="/catalogo?ofertas=true">Ofertas y combos</a>
+    </div>
+
+    <div>
+      <h3>Información</h3>
+      <a href="/contacto">Contacto</a>
+      <a href="/contacto">Envíos y devoluciones</a>
+      <a href="/contacto">Términos</a>
+      <a href="/contacto">Libro de Reclamaciones</a>
+    </div>
+
+    <div>
+      <h3>Atención</h3>
+      <p>Dirección, horario y redes:</p>
+      <b>Por configurar</b>
+      <a
+        href={`https://wa.me/${WHATSAPP_NUMBER}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="button button--whatsapp"
+      >
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 11.5a8 8 0 0 1-11.8 7L4 20l1.5-4A8 8 0 1 1 20 11.5Z" />
+          <path d="M9 8.5c.5 3 2 4.5 5 5" />
+        </svg>
+        WhatsApp
+      </a>
+    </div>
+  </div>
+
+  <div class="shell footer-bottom">
+    <span>© MAGIK BARBER SUPPLY</span>
+    <span>Precios, stock y fotografías ilustrativos y editables.</span>
+    <a href="/admin">Administración</a>
+  </div>
+</footer>
+

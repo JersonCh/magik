@@ -1,0 +1,82 @@
+---
+import HeaderSearch from "../react/HeaderSearch"
+import CartTrigger from "../react/CartTrigger"
+
+interface Props {
+  currentPath?: string
+}
+
+const { currentPath = "/" } = Astro.props
+
+const navLinks = [
+  { href: "/", label: "Inicio" },
+  { href: "/catalogo", label: "Catálogo" },
+  { href: "/categorias", label: "Categorías" },
+  { href: "/marcas", label: "Marcas" },
+  { href: "/contacto", label: "Contacto" },
+]
+---
+
+<header class="site-header">
+  <div class="announcement">
+    <span>TACNA, PERÚ</span>
+    <span>Equipos para barbería, salón y cuidado personal</span>
+    <span>Atención por WhatsApp</span>
+  </div>
+
+  <div class="header-main shell">
+    <a href="/" class="logo-button" aria-label="Ir al inicio de Magik Barber Supply">
+      <span class="logo-crop">
+        <img src="/assets/9f199.png" alt="Magik Barber Supply Logo" width="120" height="90" />
+      </span>
+    </a>
+
+    <HeaderSearch client:load />
+
+    <CartTrigger client:load />
+
+    <button
+      type="button"
+      class="mobile-menu-button"
+      id="mobile-menu-btn"
+      aria-label="Abrir menú"
+    >
+      <svg class="icon menu-open-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 7h16M4 12h16M4 17h16" />
+      </svg>
+      <svg class="icon menu-close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: none;">
+        <path d="m6 6 12 12M18 6 6 18" />
+      </svg>
+    </button>
+  </div>
+
+  <!-- Barra de navegación única -->
+  <nav class="nav shell" id="site-nav">
+    {navLinks.map((link) => (
+      <a
+        href={link.href}
+        class={currentPath === link.href ? "active" : ""}
+      >
+        {link.label}
+      </a>
+    ))}
+    <a href="/catalogo?ofertas=true" class={currentPath === "/catalogo?ofertas=true" ? "active" : ""}>
+      <span class="offer-dot" /> Ofertas
+    </a>
+  </nav>
+</header>
+
+<script>
+  const btn = document.getElementById("mobile-menu-btn")
+  const nav = document.getElementById("site-nav")
+  const openIcon = btn?.querySelector(".menu-open-icon") as HTMLElement | null
+  const closeIcon = btn?.querySelector(".menu-close-icon") as HTMLElement | null
+
+  btn?.addEventListener("click", () => {
+    const isOpen = nav?.classList.toggle("nav--open")
+    if (openIcon && closeIcon) {
+      openIcon.style.display = isOpen ? "none" : "block"
+      closeIcon.style.display = isOpen ? "block" : "none"
+    }
+  })
+</script>

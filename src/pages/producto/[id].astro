@@ -1,0 +1,117 @@
+---
+import Layout from "../../layouts/Layout.astro"
+import ProductCard from "../../components/astro/ProductCard.astro"
+import ProductDetailInteractive from "../../components/react/ProductDetailInteractive"
+import { products } from "../../data/products"
+
+export const prerender = false
+
+const { id } = Astro.params
+const product = products.find((p) => p.id === Number(id))
+
+if (!product) {
+  return Astro.redirect("/catalogo")
+}
+
+const relatedProducts = products
+  .filter((p) => p.id !== product.id)
+  .slice(0, 3)
+---
+
+<Layout
+  title={`${product.name} | ${product.brand} - Magik Barber Supply`}
+  description={`Compra ${product.name} de ${product.brand}. S/${product.price}. Envíos y atención en Tacna.`}
+  currentPath="/catalogo"
+>
+  <main class="page shell">
+    <p class="breadcrumb">
+      <a href="/">Inicio</a> / <a href={`/categorias`}>{product.category}</a> / {product.name}
+    </p>
+
+    <div class="detail-grid">
+      <!-- Galería de imágenes -->
+      <div class="gallery">
+        <div class="gallery-main">
+          <img src={product.image} alt={product.name} id="main-product-img" />
+          <button type="button" aria-label="Ampliar imagen">Ampliar</button>
+        </div>
+        <div class="thumbnails">
+          {[product.image, product.image, product.image].map((image, index) => (
+            <button
+              type="button"
+              class={index === 0 ? "active" : ""}
+              aria-label={`Ver ángulo ${index + 1}`}
+            >
+              <img src={image} alt={`Vista ${index + 1}`} />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <!-- Información y Compra -->
+      <section class="detail-info">
+        <p class="eyebrow">
+          {product.brand} · {product.model}
+        </p>
+        <h1>{product.name}</h1>
+
+        <div class="detail-price">
+          <strong>S/{product.price}</strong>
+          {product.oldPrice && (
+            <>
+              <del>S/{product.oldPrice}</del>
+              <span>Ahorra S/{product.oldPrice - product.price}</span>
+            </>
+          )}
+        </div>
+
+        <p class={product.stock ? "stock-pill" : "stock-pill out"}>
+          {product.stock ? "Disponible" : "Agotado"}
+        </p>
+
+        <p class="detail-description">
+          Producto para uso profesional o personal. Las características y disponibilidad final se confirman antes de coordinar el pedido.
+        </p>
+
+        <!-- Isla React con controles de variante, cantidad y checkout directo -->
+        <ProductDetailInteractive product={product} client:load />
+      </section>
+    </div>
+
+    <!-- Pestañas de información técnica -->
+    <div class="detail-tabs">
+      <section>
+        <h2>Descripción</h2>
+        <p>
+          Fotografía y precio ilustrativos editables. Consulta al equipo de Magik Barber Supply para validar el modelo exacto.
+        </p>
+      </section>
+      <section>
+        <h2>Características técnicas</h2>
+        <p>
+          Datos técnicos por confirmar. No se muestran potencia, autonomía, voltaje ni accesorios sin información verificada.
+        </p>
+      </section>
+      <section>
+        <h2>Contenido de la caja</h2>
+        <p>Por confirmar según modelo y presentación seleccionada.</p>
+      </section>
+    </div>
+
+    <!-- Productos relacionados -->
+    <section class="related">
+      <div class="section-heading">
+        <div>
+          <p>SELECCIÓN MANUAL</p>
+          <h2>También te puede interesar</h2>
+        </div>
+      </div>
+      <div class="product-grid">
+        {relatedProducts.map((p) => (
+          <ProductCard product={p} />
+        ))}
+      </div>
+    </section>
+  </main>
+</Layout>
+

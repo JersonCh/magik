@@ -1,0 +1,10 @@
+{
+  "description": "Explore a user-friendly catalog of barber supplies and personal care products, allowing barbers and stylists to easily place orders via WhatsApp.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

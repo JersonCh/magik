@@ -1,0 +1,66 @@
+---
+import Layout from "../layouts/Layout.astro"
+import { WHATSAPP_NUMBER } from "../data/products"
+---
+
+<Layout title="Contacto | Magik Barber Supply Tacna" currentPath="/contacto">
+  <main class="page shell">
+    <p class="breadcrumb">
+      <a href="/">Inicio</a> / Contacto
+    </p>
+
+    <div class="contact-grid">
+      <section class="contact-hero">
+        <p>ESTAMOS EN TACNA</p>
+        <h1>Hablemos de lo que necesitas</h1>
+        <span>
+          Escríbenos para consultar productos, stock y modalidades de entrega.
+        </span>
+        <a
+          href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hola, quisiera consultar con Magik Barber Supply.")}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="button button--whatsapp"
+        >
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 11.5a8 8 0 0 1-11.8 7L4 20l1.5-4A8 8 0 1 1 20 11.5Z" />
+            <path d="M9 8.5c.5 3 2 4.5 5 5" />
+          </svg>
+          Escribir por WhatsApp
+        </a>
+      </section>
+
+      <section class="contact-card">
+        <div>
+          <span>UBICACIÓN</span>
+          <b>Tacna, Perú</b>
+          <p>Dirección exacta por configurar</p>
+        </div>
+        <div>
+          <span>HORARIO</span>
+          <b>Por configurar</b>
+          <p>Atención coordinada por WhatsApp</p>
+        </div>
+        <div>
+          <span>REDES SOCIALES</span>
+          <b>Por configurar</b>
+          <p>Instagram · Facebook · TikTok</p>
+        </div>
+        <div>
+          <span>WHATSAPP</span>
+          <b>Número de ejemplo</b>
+          <p>+51 900 000 000</p>
+        </div>
+      </section>
+    </div>
+
+    <section class="map-placeholder">
+      <span>TACNA, PERÚ</span>
+      <h2>Ubicación editable del negocio</h2>
+      <p>
+        El mapa y la dirección se publicarán cuando se configure la información oficial.
+      </p>
+    </section>
+  </main>
+</Layout>
+

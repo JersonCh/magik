@@ -1,0 +1,23 @@
+---
+import Layout from "../layouts/Layout.astro"
+import BrandDirectory from "../components/react/BrandDirectory"
+---
+
+<Layout title="Marcas | Magik Barber Supply Tacna" currentPath="/marcas">
+  <main class="page shell">
+    <p class="breadcrumb">
+      <a href="/">Inicio</a> / Marcas
+    </p>
+
+    <div class="page-intro">
+      <p>MARCAS DEL CATÁLOGO</p>
+      <h1>Equipos para cada estilo de trabajo</h1>
+      <span>
+        La disponibilidad de marcas y modelos se confirma al preparar el pedido.
+      </span>
+    </div>
+
+    <BrandDirectory client:load />
+  </main>
+</Layout>
+

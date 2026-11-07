@@ -1,0 +1,21 @@
+---
+import Layout from "../layouts/Layout.astro"
+import CategoryDirectory from "../components/react/CategoryDirectory"
+---
+
+<Layout title="Categorías | Magik Barber Supply Tacna" currentPath="/categorias">
+  <main class="page shell">
+    <p class="breadcrumb">
+      <a href="/">Inicio</a> / Categorías
+    </p>
+
+    <div class="page-intro">
+      <p>SIETE FAMILIAS</p>
+      <h1>Una categoría para cada técnica</h1>
+      <span>Explora el catálogo por tipo de herramienta o producto.</span>
+    </div>
+
+    <CategoryDirectory client:load />
+  </main>
+</Layout>
+

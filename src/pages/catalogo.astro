@@ -1,0 +1,32 @@
+---
+import Layout from "../layouts/Layout.astro"
+import CatalogFilters from "../components/react/CatalogFilters"
+
+const offersOnly = Astro.url.searchParams.get("ofertas") === "true"
+const initialCat = Astro.url.searchParams.get("categoria") || "Todas las categorías"
+const initialBrand = Astro.url.searchParams.get("marca") || "Todas las marcas"
+---
+
+<Layout title="Catálogo | Magik Barber Supply Tacna" currentPath="/catalogo">
+  <main class="page shell">
+    <p class="breadcrumb">
+      <a href="/">Inicio</a> / Catálogo
+    </p>
+
+    <div class="page-intro">
+      <p>CATÁLOGO MAGIK</p>
+      <h1>Todo para tu barbería</h1>
+      <span>
+        Encuentra equipos, cuidado y repuestos. Precios y disponibilidad sujetos a confirmación.
+      </span>
+    </div>
+
+    <CatalogFilters
+      client:load
+      initialCategory={initialCat}
+      initialBrand={initialBrand}
+      onlyOffers={offersOnly}
+    />
+  </main>
+</Layout>
+

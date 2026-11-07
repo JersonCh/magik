@@ -1,0 +1,234 @@
+/* ==========================================================================
+   CART & DRAWER - MAGIK BARBER SUPPLY
+   ========================================================================== */
+
+/* Cart Layout (Página /pedido) */
+.cart-layout {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 45px;
+}
+
+.cart-items {
+  border-top: 1px solid var(--line);
+}
+
+.cart-item {
+  display: grid;
+  grid-template-columns: 125px 1fr auto;
+  gap: 20px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line);
+  align-items: center;
+}
+
+.cart-item > img {
+  width: 125px;
+  height: 125px;
+  object-fit: cover;
+  background: var(--soft);
+  border-radius: var(--radius-lg, 8px);
+}
+
+.cart-item-copy p {
+  font-size: 10px;
+  color: var(--muted);
+  margin: 0 0 7px;
+}
+
+.cart-item-copy span {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin: 7px 0;
+}
+
+.cart-item-copy > strong {
+  font-size: 14px;
+}
+
+.cart-item-controls {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.delete {
+  border: 0;
+  background: none;
+  color: var(--danger);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 4px;
+}
+
+.order-form {
+  background: var(--soft);
+  padding: 25px;
+  border-radius: var(--radius);
+  align-self: start;
+  position: sticky;
+  top: 140px;
+}
+
+.order-form h2 {
+  font-family: var(--font-extrabold);
+  font-size: 23px;
+  margin: 0 0 20px;
+}
+
+.order-form .select-field {
+  margin-bottom: 15px;
+}
+
+.subtotal {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+  margin-top: 20px;
+}
+
+.subtotal strong {
+  font-family: var(--font-extrabold);
+  font-size: 24px;
+}
+
+.order-form > .button {
+  width: 100%;
+  margin-top: 18px;
+}
+
+/* Lateral Cart Drawer */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: #0008;
+  z-index: 80;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease;
+}
+
+.drawer-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.drawer {
+  position: fixed;
+  z-index: 81;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: min(480px, 100%);
+  background: white;
+  transform: translateX(100%);
+  transition: transform .28s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.drawer.open {
+  transform: translateX(0);
+}
+
+.drawer-head {
+  background: var(--ink);
+  color: white;
+  padding: 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.drawer-head p {
+  font-size: 9px;
+  letter-spacing: .13em;
+  color: var(--yellow);
+  margin: 0 0 6px;
+}
+
+.drawer-head h2 {
+  font-size: 20px;
+  margin: 0;
+}
+
+.drawer-head button {
+  border: 0;
+  background: none;
+  color: white;
+  cursor: pointer;
+}
+
+.drawer-content {
+  overflow: auto;
+  padding: 0 22px;
+  flex: 1;
+}
+
+.mini-cart-item {
+  display: grid;
+  grid-template-columns: 85px 1fr 25px;
+  gap: 12px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.mini-cart-item > img {
+  width: 85px;
+  height: 95px;
+  object-fit: cover;
+  background: var(--soft);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.mini-cart-item h3 {
+  font-size: 14px;
+}
+
+.mini-cart-item p {
+  font-size: 10px;
+  color: var(--muted);
+  margin: 5px 0;
+}
+
+.mini-cart-item strong {
+  font-size: 13px;
+}
+
+.mini-cart-item .quantity {
+  width: max-content;
+  margin-top: 8px;
+  height: 31px;
+}
+
+.drawer-footer {
+  padding: 20px 25px;
+  border-top: 1px solid var(--line);
+}
+
+.drawer-footer .button {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.drawer-footer p {
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.empty-cart {
+  padding: 90px 20px;
+  text-align: center;
+  background: var(--soft);
+}
+
+.empty-cart.compact {
+  background: white;
+  padding-top: 100px;
+}
+

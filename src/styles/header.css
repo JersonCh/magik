@@ -1,0 +1,203 @@
+/* ==========================================================================
+   HEADER & NAVIGATION - MAGIK BARBER SUPPLY
+   ========================================================================== */
+
+.announcement {
+  height: 34px;
+  background: var(--yellow);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 max(32px, calc((100vw - 1380px) / 2));
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-family: var(--font-bold);
+}
+
+.site-header {
+  background: var(--ink);
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: var(--shadow-header);
+}
+
+.header-main {
+  height: 104px;
+  display: grid;
+  grid-template-columns: 150px 1fr 150px;
+  gap: 40px;
+  align-items: center;
+}
+
+.logo-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  width: 120px;
+  height: 78px;
+  display: block;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.logo-crop {
+  display: block;
+  width: 120px;
+  height: 78px;
+  overflow: hidden;
+}
+
+.logo-crop img {
+  width: 120px;
+  height: 90px;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+}
+
+.search-wrap {
+  height: 50px;
+  background: white;
+  border-radius: var(--radius-md, 7px);
+  display: flex;
+  align-items: center;
+  color: #666;
+  padding: 0 16px;
+  position: relative;
+}
+
+.search-wrap input {
+  border: 0;
+  outline: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0 12px;
+  color: #171717;
+  font-family: var(--font-regular);
+}
+
+.suggestions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 57px;
+  background: white;
+  color: #171717;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg, 8px);
+  padding: 10px;
+  box-shadow: var(--shadow-dropdown);
+  z-index: 80;
+}
+
+.suggestions strong {
+  display: block;
+  font-size: 11px;
+  padding: 7px 9px;
+  color: var(--muted);
+  letter-spacing: .08em;
+}
+
+.suggestions a,
+.suggestions button {
+  border: 0;
+  background: white;
+  width: 100%;
+  padding: 10px;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  border-radius: 5px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.suggestions a:hover,
+.suggestions button:hover {
+  background: var(--soft);
+}
+
+.suggestions a span,
+.suggestions button span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.cart-trigger {
+  justify-self: end;
+  gap: 10px;
+}
+
+.cart-trigger b {
+  display: grid;
+  place-items: center;
+  background: var(--yellow);
+  color: var(--ink);
+  width: 25px;
+  height: 25px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+}
+
+.mobile-menu-button {
+  display: none;
+  background: transparent;
+  color: white;
+  border: 0;
+}
+
+.nav {
+  display: flex;
+  gap: 36px;
+  align-items: center;
+  height: 54px;
+  border-top: 1px solid var(--carbon-border-dark, #232323);
+}
+
+.nav a,
+.nav button {
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-nav, #ccc);
+  font-family: var(--font-semibold);
+  font-size: 13px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.nav a:hover,
+.nav a.active,
+.nav button:hover,
+.nav button.active {
+  color: var(--yellow);
+}
+
+.nav a.active:after,
+.nav button.active:after {
+  content: "";
+  position: absolute;
+  height: 2px;
+  background: var(--yellow);
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.offer-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--yellow);
+  margin-right: 5px;
+}
+

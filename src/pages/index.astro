@@ -1,0 +1,93 @@
+---
+import Layout from "../layouts/Layout.astro"
+import Hero from "../components/astro/Hero.astro"
+import TrustStrip from "../components/astro/TrustStrip.astro"
+import CategoryCard from "../components/astro/CategoryCard.astro"
+import ProductCard from "../components/astro/ProductCard.astro"
+import PromoStrip from "../components/astro/PromoStrip.astro"
+import HowToBuy from "../components/astro/HowToBuy.astro"
+import BrandsStrip from "../components/astro/BrandsStrip.astro"
+import { products, categories } from "../data/products"
+
+const featuredProducts = products.slice(0, 4)
+const newArrivals = products.slice(4, 8)
+---
+
+<Layout title="Magik Barber Supply | Equipos de Barbería en Tacna">
+  <Hero />
+  <TrustStrip />
+
+  <main>
+    <!-- Explorar por técnica -->
+    <section class="section shell">
+      <div class="section-heading">
+        <div>
+          <p>EXPLORA POR TÉCNICA</p>
+          <h2>Encuentra justo lo que necesitas</h2>
+        </div>
+        <a href="/categorias">
+          Ver categorías
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 12h14m-5-5 5 5-5 5" />
+          </svg>
+        </a>
+      </div>
+
+      <div class="category-grid">
+        {categories.map(([key, label, image]) => (
+          <CategoryCard name={key} label={label} image={image} />
+        ))}
+      </div>
+    </section>
+
+    <!-- Productos destacados -->
+    <section class="section section--soft">
+      <div class="shell">
+        <div class="section-heading">
+          <div>
+            <p>SELECCIÓN MAGIK</p>
+            <h2>Productos destacados</h2>
+          </div>
+          <a href="/catalogo">
+            Ver todo el catálogo
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 12h14m-5-5 5 5-5 5" />
+            </svg>
+          </a>
+        </div>
+
+        <div class="product-grid">
+          {featuredProducts.map((product) => (
+            <ProductCard product={product} />
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- Oferta de la semana & Combo -->
+    <PromoStrip />
+
+    <!-- Recién llegados -->
+    <section class="section shell">
+      <div class="section-heading">
+        <div>
+          <p>RECIÉN LLEGADOS</p>
+          <h2>Novedades para tu espacio</h2>
+        </div>
+      </div>
+
+      <div class="product-grid">
+        {newArrivals.map((product) => (
+          <ProductCard product={product} />
+        ))}
+      </div>
+    </section>
+
+    <!-- Cómo comprar -->
+    <HowToBuy />
+
+    <!-- Marcas en catálogo -->
+    <BrandsStrip />
+  </main>
+</Layout>
+

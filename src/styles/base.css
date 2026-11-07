@@ -1,0 +1,188 @@
+/* ==========================================================================
+   BASE & TYPOGRAPHY - MAGIK BARBER SUPPLY
+   ========================================================================== */
+
+@font-face {
+  font-family: "Inter:Regular";
+  src: url("https://static.figma.com/font/Inter_1") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter:Medium";
+  src: url("https://static.figma.com/font/Inter_1") format("woff2");
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter:Semi Bold";
+  src: url("https://static.figma.com/font/Inter_1") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter:Bold";
+  src: url("https://static.figma.com/font/Inter_1") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter:Extra Bold";
+  src: url("https://static.figma.com/font/Inter_1") format("woff2");
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--carbon-text, #171717);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select, textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #4b8df8;
+  outline-offset: 2px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+
+.shell {
+  width: var(--shell);
+  margin-inline: auto;
+}
+
+.icon {
+  width: 20px;
+  height: 20px;
+  display: block;
+  flex: 0 0 auto;
+}
+
+/* Botones con microinteracción exacta */
+.button {
+  min-height: 46px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md, 7px);
+  padding: 0 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  font-family: var(--font-bold);
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+  transition: var(--transition-fast);
+}
+
+.button:hover {
+  transform: translateY(-1px);
+}
+
+.button--primary {
+  background: var(--yellow);
+  color: var(--ink);
+}
+
+.button--primary:hover {
+  background: var(--yellow-hover, #f0d300);
+}
+
+.button--dark {
+  background: var(--ink);
+  color: white;
+}
+
+.button--outline {
+  border-color: currentColor;
+  background: transparent;
+  color: inherit;
+}
+
+.button--whatsapp {
+  background: var(--green);
+  color: white;
+}
+
+.button--ghost {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  border: 0;
+}
+
+/* Campos de formulario */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 11px;
+  font-family: var(--font-semibold);
+  margin-bottom: 15px;
+}
+
+.field input,
+.field textarea {
+  height: 44px;
+  background: white;
+  border: 1px solid var(--line);
+  padding: 0 12px;
+  font-family: var(--font-regular);
+}
+
+.field textarea {
+  height: 95px;
+  padding-top: 12px;
+  resize: vertical;
+}
+
+.select-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 12px;
+  font-family: var(--font-semibold);
+}
+
+.select-field select {
+  background: white;
+  border: 1px solid var(--line);
+  height: 44px;
+  padding: 0 11px;
+  color: #171717;
+  width: 100%;
+}
+

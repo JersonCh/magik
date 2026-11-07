@@ -1,0 +1,53 @@
+---
+import type { Product } from "../../data/products"
+import AddToCartButton from "../react/AddToCartButton"
+
+interface Props {
+  product: Product
+}
+
+const { product } = Astro.props
+---
+
+<article class={`product-card ${!product.stock ? "product-card--out" : ""}`}>
+  <a
+    href={`/producto/${product.id}`}
+    class="product-image"
+    aria-label={`Ver detalle de ${product.name}`}
+  >
+    <img src={product.image} alt={product.name} loading="lazy" />
+    {product.badge && <span class="badge">{product.badge}</span>}
+    {!product.stock && <span class="out-label">Agotado</span>}
+  </a>
+
+  <div class="product-copy">
+    <p class="eyebrow">
+      {product.brand} · {product.model}
+    </p>
+    <h3>{product.name}</h3>
+  </div>
+
+  <div class="price-row">
+    <strong>S/{product.price}</strong>
+    {product.oldPrice && (
+      <>
+        <del>S/{product.oldPrice}</del>
+        <span>
+          -{Math.round((1 - product.price / product.oldPrice) * 100)}%
+        </span>
+      </>
+    )}
+  </div>
+
+  <p class={product.stock ? "availability" : "availability unavailable"}>
+    {product.stock ? "Disponible" : "Agotado · Consulta disponibilidad"}
+  </p>
+
+  <div class="card-actions">
+    <a href={`/producto/${product.id}`} class="button button--outline">
+      Ver producto
+    </a>
+    <AddToCartButton product={product} client:visible />
+  </div>
+</article>
+
