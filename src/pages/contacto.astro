@@ -1,12 +1,13 @@
 ---
 import Layout from "../layouts/Layout.astro"
+import ShippingCourierTabs from "../components/react/ShippingCourierTabs"
 import { WHATSAPP_NUMBER } from "../data/products"
 ---
 
-<Layout title="Contacto | Magik Barber Supply Tacna" currentPath="/contacto">
+<Layout title="Contacto y Envíos | Magik Barber Supply Tacna" currentPath="/contacto">
   <main class="page shell">
     <p class="breadcrumb">
-      <a href="/">Inicio</a> / Contacto
+      <a href="/">Inicio</a> / Contacto y Envíos
     </p>
 
     <div class="contact-grid">
@@ -14,10 +15,10 @@ import { WHATSAPP_NUMBER } from "../data/products"
         <p>ESTAMOS EN TACNA</p>
         <h1>Hablemos de lo que necesitas</h1>
         <span>
-          Escríbenos para consultar productos, stock y modalidades de entrega.
+          Escríbenos para consultar productos, stock y modalidades de entrega a nivel nacional.
         </span>
         <a
-          href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hola, quisiera consultar con Magik Barber Supply.")}`}
+          href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hola, quisiera consultar con Magik Barber Supply sobre herramientas y envíos.")}`}
           target="_blank"
           rel="noopener noreferrer"
           class="button button--whatsapp"
@@ -34,33 +35,35 @@ import { WHATSAPP_NUMBER } from "../data/products"
         <div>
           <span>UBICACIÓN</span>
           <b>Tacna, Perú</b>
-          <p>Dirección exacta por configurar</p>
+          <p>Atención y recojo coordinado</p>
         </div>
         <div>
           <span>HORARIO</span>
-          <b>Por configurar</b>
-          <p>Atención coordinada por WhatsApp</p>
+          <b>Lunes a Sábado</b>
+          <p>Coordinación previa por WhatsApp</p>
         </div>
         <div>
-          <span>REDES SOCIALES</span>
-          <b>Por configurar</b>
-          <p>Instagram · Facebook · TikTok</p>
+          <span>ENVÍOS NACIONALES</span>
+          <b>Shalom y Olva Courier</b>
+          <p>Despachos diarios a todo el Perú</p>
         </div>
         <div>
-          <span>WHATSAPP</span>
-          <b>Número de ejemplo</b>
+          <span>WHATSAPP DIRECTO</span>
+          <b>Atención personalizada</b>
           <p>+51 900 000 000</p>
         </div>
       </section>
     </div>
 
+    <!-- Guía y cobertura de envíos -->
+    <ShippingCourierTabs client:visible />
+
     <section class="map-placeholder">
       <span>TACNA, PERÚ</span>
-      <h2>Ubicación editable del negocio</h2>
+      <h2>Ubicación comercial de Magik</h2>
       <p>
-        El mapa y la dirección se publicarán cuando se configure la información oficial.
+        Punto de entrega en la ciudad de Tacna y despacho nacional diario.
       </p>
     </section>
   </main>
 </Layout>
-

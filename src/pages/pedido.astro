@@ -1,6 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro"
 import CartOrderSummary from "../components/react/CartOrderSummary"
+import ShippingCourierTabs from "../components/react/ShippingCourierTabs"
 ---
 
 <Layout title="Mi Pedido | Magik Barber Supply Tacna" currentPath="/pedido">
@@ -18,6 +19,8 @@ import CartOrderSummary from "../components/react/CartOrderSummary"
     </div>
 
     <CartOrderSummary client:load />
+
+    <!-- Guía logística y operadores de envío Perú -->
+    <ShippingCourierTabs client:visible />
   </main>
 </Layout>
-

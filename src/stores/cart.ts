@@ -7,10 +7,25 @@ export const $cart = atom<CartItem[]>([])
 // Control del drawer lateral
 export const $isDrawerOpen = atom<boolean>(false)
 
-// Estado del cliente para checkout rápido
-export const $customer = atom({
+export interface CustomerState {
+  name: string
+  phone: string
+  dni: string
+  delivery: "Recojo en tienda" | "Shalom" | "Olva Courier"
+  city: string
+  agency: string
+  address: string
+  note: string
+}
+
+// Estado del cliente para checkout rápido adaptado al mercado peruano
+export const $customer = atom<CustomerState>({
   name: "",
+  phone: "",
+  dni: "",
   delivery: "Recojo en tienda",
+  city: "",
+  agency: "",
   address: "",
   note: "",
 })
@@ -80,4 +95,3 @@ export function removeFromCart(id: number) {
 export function clearCart() {
   $cart.set([])
 }
-

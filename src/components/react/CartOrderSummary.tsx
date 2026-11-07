@@ -6,7 +6,7 @@ import {
   updateQuantity,
   removeFromCart,
 } from "../../stores/cart"
-import { WHATSAPP_NUMBER } from "../../data/products"
+import { buildWhatsAppUrl } from "../../lib/whatsapp"
 import Icon from "./Icon"
 
 export default function CartOrderSummary() {
@@ -16,38 +16,44 @@ export default function CartOrderSummary() {
 
   const sendOrder = () => {
     if (!customer.name.trim()) {
-      window.alert("Ingresa tu nombre para preparar el mensaje.")
-      return
-    }
-    if (customer.delivery === "Envío a domicilio" && !customer.address.trim()) {
-      window.alert("Ingresa una ubicación o dirección.")
+      window.alert("Ingresa tu nombre completo para coordinar el pedido.")
       return
     }
 
-    const lines = [
-      "Hola, quiero consultar este pedido:",
-      "",
-      ...items.map(
-        (item, index) =>
-          `${index + 1}. ${item.name} (${item.brand} ${item.model})${
-            item.selectedVariant ? ` · ${item.selectedVariant}` : ""
-          }\n   ${item.quantity} × S/${item.price} = S/${item.quantity * item.price}`
-      ),
-      "",
-      `Subtotal: S/${subtotal}`,
-      "",
-      `Nombre: ${customer.name}`,
-      `Entrega: ${customer.delivery}`,
-      customer.address ? `Dirección: ${customer.address}` : "",
-      customer.note ? `Observaciones: ${customer.note}` : "",
-      "",
-      "Entiendo que el envío y la disponibilidad final deben confirmarse.",
-    ].filter(Boolean)
+    if (customer.delivery === "Shalom") {
+      if (!customer.dni?.trim()) {
+        window.alert("Ingresa tu DNI para la guía de remisión de Shalom.")
+        return
+      }
+      if (!customer.city?.trim() && !customer.agency?.trim()) {
+        window.alert("Ingresa la ciudad o agencia Shalom de destino.")
+        return
+      }
+    }
 
-    window.open(
-      `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(lines.join("\n"))}`,
-      "_blank"
-    )
+    if (customer.delivery === "Olva Courier") {
+      if (!customer.dni?.trim()) {
+        window.alert("Ingresa tu DNI para la emisión de la guía de Olva Courier.")
+        return
+      }
+      if (!customer.address?.trim()) {
+        window.alert("Ingresa tu dirección exacta de entrega a domicilio.")
+        return
+      }
+    }
+
+    const whatsappUrl = buildWhatsAppUrl(items, subtotal, {
+      name: customer.name,
+      phone: customer.phone,
+      dni: customer.dni,
+      delivery: customer.delivery,
+      city: customer.city,
+      agency: customer.agency,
+      address: customer.address,
+      note: customer.note,
+    })
+
+    window.open(whatsappUrl, "_blank")
   }
 
   if (items.length === 0) {
@@ -115,8 +121,9 @@ export default function CartOrderSummary() {
 
       <aside className="order-form">
         <h2>Datos para coordinar</h2>
+
         <label className="field">
-          <span>Nombre *</span>
+          <span>Nombre y Apellido *</span>
           <input
             value={customer.name}
             placeholder="¿Cómo te llamas?"
@@ -125,34 +132,129 @@ export default function CartOrderSummary() {
           />
         </label>
 
+        <label className="field">
+          <span>Teléfono o WhatsApp (opcional)</span>
+          <input
+            type="tel"
+            value={customer.phone}
+            placeholder="Ej. 952 123 456"
+            onChange={(e) => $customer.set({ ...customer, phone: e.target.value })}
+          />
+        </label>
+
         <label className="select-field" style={{ marginBottom: "15px" }}>
-          <span>Modalidad de entrega</span>
+          <span>Modalidad de entrega en Perú *</span>
           <select
             value={customer.delivery}
-            onChange={(e) => $customer.set({ ...customer, delivery: e.target.value })}
+            onChange={(e) =>
+              $customer.set({
+                ...customer,
+                delivery: e.target.value as "Recojo en tienda" | "Shalom" | "Olva Courier",
+              })
+            }
           >
-            <option>Recojo en tienda</option>
-            <option>Envío a domicilio</option>
+            <option value="Recojo en tienda">Recojo en tienda física (Tacna - S/0)</option>
+            <option value="Shalom">Envío por Shalom (Agencia a agencia · Pago en destino)</option>
+            <option value="Olva Courier">Envío por Olva Courier (Entrega a domicilio nacional)</option>
           </select>
         </label>
 
-        {customer.delivery === "Envío a domicilio" && (
-          <label className="field">
-            <span>Ubicación o dirección *</span>
-            <input
-              value={customer.address}
-              placeholder="Distrito, referencia y dirección"
-              onChange={(e) => $customer.set({ ...customer, address: e.target.value })}
-              required
-            />
-          </label>
+        {customer.delivery === "Shalom" && (
+          <>
+            <label className="field">
+              <span>DNI o RUC del titular que retira en agencia *</span>
+              <input
+                value={customer.dni}
+                placeholder="Número de documento para la guía"
+                onChange={(e) => $customer.set({ ...customer, dni: e.target.value })}
+                required
+              />
+            </label>
+            <label className="field">
+              <span>Ciudad y Agencia Shalom de destino *</span>
+              <input
+                value={customer.agency}
+                placeholder="Ej. Arequipa - Agencia La Negrita o Terminal"
+                onChange={(e) => $customer.set({ ...customer, agency: e.target.value })}
+                required
+              />
+            </label>
+            <div style={{
+              background: "#fff9cb",
+              border: "1px solid #ead100",
+              borderRadius: "6px",
+              padding: "10px 12px",
+              fontSize: "11px",
+              color: "#6b5800",
+              marginBottom: "15px",
+            }}>
+              <strong>📦 Shalom - Pago en destino:</strong> Cancelas el costo de encomienda directamente a Shalom al momento de retirar tu paquete con tu DNI.
+            </div>
+          </>
+        )}
+
+        {customer.delivery === "Olva Courier" && (
+          <>
+            <label className="field">
+              <span>DNI o RUC del titular *</span>
+              <input
+                value={customer.dni}
+                placeholder="Número de documento"
+                onChange={(e) => $customer.set({ ...customer, dni: e.target.value })}
+                required
+              />
+            </label>
+            <label className="field">
+              <span>Departamento / Ciudad / Distrito *</span>
+              <input
+                value={customer.city}
+                placeholder="Ej. Lima, Miraflores / Cusco, Wanchaq"
+                onChange={(e) => $customer.set({ ...customer, city: e.target.value })}
+                required
+              />
+            </label>
+            <label className="field">
+              <span>Dirección exacta y referencia *</span>
+              <input
+                value={customer.address}
+                placeholder="Calle, avenida, número y referencia"
+                onChange={(e) => $customer.set({ ...customer, address: e.target.value })}
+                required
+              />
+            </label>
+            <div style={{
+              background: "#e6f6ec",
+              border: "1px solid #a3e2bb",
+              borderRadius: "6px",
+              padding: "10px 12px",
+              fontSize: "11px",
+              color: "#0f5a2a",
+              marginBottom: "15px",
+            }}>
+              <strong>🚚 Olva Courier - Puerta a Puerta:</strong> El flete se cotiza según el peso de tus equipos antes de despachar.
+            </div>
+          </>
+        )}
+
+        {customer.delivery === "Recojo en tienda" && (
+          <div style={{
+            background: "#f0f0ed",
+            border: "1px solid #deded9",
+            borderRadius: "6px",
+            padding: "10px 12px",
+            fontSize: "11px",
+            color: "#555",
+            marginBottom: "15px",
+          }}>
+            <strong>📍 Punto de entrega en Tacna:</strong> Coordinamos por WhatsApp la hora de retiro en nuestro espacio comercial sin costo adicional de flete.
+          </div>
         )}
 
         <label className="field">
           <span>Observaciones (opcional)</span>
           <input
             value={customer.note}
-            placeholder="Color, horario u otra consulta"
+            placeholder="Color preferido, factura, horario, etc."
             onChange={(e) => $customer.set({ ...customer, note: e.target.value })}
           />
         </label>
@@ -172,10 +274,9 @@ export default function CartOrderSummary() {
 
         <p className="legal-note">
           El costo de envío y la disponibilidad final se confirman por WhatsApp.
-          Abrir WhatsApp no confirma el pedido.
+          Abrir WhatsApp no descuenta pagos automáticos.
         </p>
       </aside>
     </div>
   )
 }
-
