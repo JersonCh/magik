@@ -4,6 +4,7 @@ import Header from "../components/astro/Header.astro"
 import Footer from "../components/astro/Footer.astro"
 import FloatingWhatsApp from "../components/astro/FloatingWhatsApp.astro"
 import CartDrawer from "../components/react/CartDrawer"
+import ToastNotification from "../components/react/ToastNotification"
 
 interface Props {
   title?: string
@@ -35,6 +36,7 @@ const {
       <Footer />
       <FloatingWhatsApp />
       <CartDrawer client:load />
+      <ToastNotification client:load />
     </div>
   </body>
 </html>

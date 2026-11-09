@@ -1,11 +1,8 @@
 import { atom, computed } from "nanostores"
 import type { Product, CartItem } from "../data/products"
 
-// Atom principal para el carrito (persistente en memoria durante la sesión)
-export const $cart = atom<CartItem[]>([])
-
-// Control del drawer lateral
-export const $isDrawerOpen = atom<boolean>(false)
+const CART_STORAGE_KEY = "magik-cart"
+const CUSTOMER_STORAGE_KEY = "magik-customer"
 
 export interface CustomerState {
   name: string
@@ -18,17 +15,66 @@ export interface CustomerState {
   note: string
 }
 
-// Estado del cliente para checkout rápido adaptado al mercado peruano
-export const $customer = atom<CustomerState>({
-  name: "",
-  phone: "",
-  dni: "",
-  delivery: "Recojo en tienda",
-  city: "",
-  agency: "",
-  address: "",
-  note: "",
-})
+function getInitialCart(): CartItem[] {
+  if (typeof window === "undefined") return []
+  try {
+    const saved = localStorage.getItem(CART_STORAGE_KEY)
+    return saved ? JSON.parse(saved) : []
+  } catch {
+    return []
+  }
+}
+
+function getInitialCustomer(): CustomerState {
+  const defaultState: CustomerState = {
+    name: "",
+    phone: "",
+    dni: "",
+    delivery: "Recojo en tienda",
+    city: "",
+    agency: "",
+    address: "",
+    note: "",
+  }
+  if (typeof window === "undefined") return defaultState
+  try {
+    const saved = localStorage.getItem(CUSTOMER_STORAGE_KEY)
+    return saved ? { ...defaultState, ...JSON.parse(saved) } : defaultState
+  } catch {
+    return defaultState
+  }
+}
+
+// Atom principal para el carrito sincronizado con localStorage
+export const $cart = atom<CartItem[]>(getInitialCart())
+
+// Estado del cliente persistido para evitar tener que rellenar datos al volver
+export const $customer = atom<CustomerState>(getInitialCustomer())
+
+// Control del drawer lateral
+export const $isDrawerOpen = atom<boolean>(false)
+
+// Notificaciones Toast flotantes
+export const $toastMessage = atom<string>("")
+
+// Sincronización reactiva con localStorage en el cliente
+if (typeof window !== "undefined") {
+  $cart.subscribe((items) => {
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items))
+    } catch {
+      // Ignorar errores de cuota en storage
+    }
+  })
+
+  $customer.subscribe((state) => {
+    try {
+      localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify(state))
+    } catch {
+      // Ignorar errores
+    }
+  })
+}
 
 // Computados reactivos
 export const $cartCount = computed($cart, (items) =>
@@ -38,6 +84,21 @@ export const $cartCount = computed($cart, (items) =>
 export const $cartSubtotal = computed($cart, (items) =>
   items.reduce((total, item) => total + item.price * item.quantity, 0)
 )
+
+// Helper para notificaciones Toast
+let toastTimeout: ReturnType<typeof setTimeout> | null = null
+export function showToast(message: string, duration = 3000) {
+  $toastMessage.set(message)
+  if (toastTimeout) clearTimeout(toastTimeout)
+  toastTimeout = setTimeout(() => {
+    $toastMessage.set("")
+  }, duration)
+}
+
+export function hideToast() {
+  $toastMessage.set("")
+  if (toastTimeout) clearTimeout(toastTimeout)
+}
 
 // Acciones del carrito
 export function openDrawer() {
@@ -73,6 +134,7 @@ export function addToCart(product: Product, variant?: string, quantity = 1) {
     ])
   }
 
+  showToast(`¡${product.name} añadido a tu pedido!`)
   $isDrawerOpen.set(true)
 }
 
@@ -89,9 +151,20 @@ export function updateQuantity(id: number, quantity: number) {
 
 export function removeFromCart(id: number) {
   const items = $cart.get()
+  const removed = items.find((item) => item.id === id)
   $cart.set(items.filter((item) => item.id !== id))
+  if (removed) {
+    showToast(`Eliminado: ${removed.name}`)
+  }
 }
 
 export function clearCart() {
   $cart.set([])
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.removeItem(CART_STORAGE_KEY)
+    } catch {
+      // Ignorar errores
+    }
+  }
 }
