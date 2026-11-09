@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro"
-import { saveProduct } from "../../../lib/db"
+import { saveProduct, deleteProduct } from "../../../lib/db"
 
 export const prerender = false
 
@@ -46,6 +46,39 @@ export const POST: APIRoute = async ({ request, locals }) => {
     console.error("[API] Error en POST /api/admin/products:", error)
     return new Response(
       JSON.stringify({ success: false, message: "Error interno al procesar el producto" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    )
+  }
+}
+
+export const DELETE: APIRoute = async ({ request, locals }) => {
+  try {
+    const body = await request.json()
+    const id = Number(body?.id)
+
+    if (!id) {
+      return new Response(
+        JSON.stringify({ success: false, message: "ID de producto inválido" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      )
+    }
+
+    const ok = await deleteProduct(id, locals)
+    if (!ok) {
+      return new Response(
+        JSON.stringify({ success: false, message: "No se encontró el producto o no se pudo eliminar" }),
+        { status: 404, headers: { "Content-Type": "application/json" } }
+      )
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, message: `Producto ${id} eliminado correctamente` }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    )
+  } catch (error) {
+    console.error("[API] Error en DELETE /api/admin/products:", error)
+    return new Response(
+      JSON.stringify({ success: false, message: "Error interno al eliminar el producto" }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     )
   }
