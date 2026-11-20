@@ -2,7 +2,9 @@ import { useState, useEffect } from "react"
 import { products as initialProducts, type Product } from "../../data/products"
 import type { BrandWithCount, StoreConfigMap } from "../../lib/db"
 import { defaultStoreConfig } from "../../lib/db"
+import { exportarCatalogoCsv } from "../../lib/csvHelper"
 import Icon from "./Icon"
+import CsvImportModal from "./CsvImportModal"
 
 const A = "/assets/"
 
@@ -38,6 +40,7 @@ export default function AdminDashboard() {
   const [isNewProduct, setIsNewProduct] = useState(false)
   const [description, setDescription] = useState("Descripción detallada del equipo profesional para barbería.")
   const [productToDelete, setProductToDelete] = useState<Product | null>(null)
+  const [isCsvModalOpen, setIsCsvModalOpen] = useState(false)
 
   // Estado de Marcas
   const [brandsList, setBrandsList] = useState<BrandWithCount[]>([])
@@ -108,6 +111,50 @@ export default function AdminDashboard() {
     setToastMessage(msg)
     setSaved(true)
     setTimeout(() => setSaved(false), 2400)
+  }
+
+  // Exportar catálogo completo a CSV
+  const handleExportCsv = () => {
+    try {
+      const csvData = exportarCatalogoCsv(productList)
+      const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      const dateStr = new Date().toISOString().split("T")[0]
+      link.href = url
+      link.setAttribute("download", `catalogo_magik_${dateStr}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      triggerToast("Catálogo exportado exitosamente a CSV")
+    } catch {
+      triggerToast("Error al exportar archivo CSV")
+    }
+  }
+
+  // Recargar datos tras importación masiva exitosa
+  const handleCsvImportSuccess = async () => {
+    try {
+      const resP = await fetch("/api/products")
+      if (resP.ok) {
+        const prods = await resP.json()
+        if (Array.isArray(prods) && prods.length > 0) {
+          setProductList(prods)
+          setEditingProduct(prods[0])
+        }
+      }
+      const resB = await fetch("/api/admin/brands")
+      if (resB.ok) {
+        const dataB = await resB.json()
+        if (dataB.brands && Array.isArray(dataB.brands)) {
+          setBrandsList(dataB.brands)
+        }
+      }
+    } catch (err) {
+      console.warn("Error al refrescar tras importación:", err)
+    }
+    triggerToast("Catálogo sincronizado desde archivo CSV")
   }
 
   // --- AUTENTICACIÓN ---
@@ -451,13 +498,58 @@ export default function AdminDashboard() {
           </div>
 
           {tab === "Productos" && (
-            <button
-              type="button"
-              className="button button--primary"
-              onClick={handleNewProductClick}
-            >
-              <Icon name="plus" /> Nuevo producto
-            </button>
+            <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                style={{
+                  background: "white",
+                  border: "1px solid var(--line)",
+                  color: "var(--ink)",
+                  padding: "9px 14px",
+                  fontSize: "12px",
+                  borderRadius: "var(--radius-sm)",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontFamily: "var(--font-medium)",
+                }}
+                title="Descargar todo el catálogo a Excel / CSV"
+              >
+                <Icon name="arrow" /> Exportar CSV
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsCsvModalOpen(true)}
+                style={{
+                  background: "var(--soft)",
+                  border: "1px solid var(--line)",
+                  color: "var(--ink)",
+                  padding: "9px 14px",
+                  fontSize: "12px",
+                  borderRadius: "var(--radius-sm)",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontFamily: "var(--font-medium)",
+                }}
+                title="Carga masiva desde archivo CSV o Excel"
+              >
+                <Icon name="filter" /> Importar CSV
+              </button>
+
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={handleNewProductClick}
+                style={{ padding: "9px 16px", fontSize: "12px" }}
+              >
+                <Icon name="plus" /> Nuevo producto
+              </button>
+            </div>
           )}
         </div>
 
@@ -1095,6 +1187,15 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* Modal de Importación Masiva CSV */}
+      <CsvImportModal
+        isOpen={isCsvModalOpen}
+        productos={productList}
+        marcas={brandsList}
+        onClose={() => setIsCsvModalOpen(false)}
+        onSuccess={handleCsvImportSuccess}
+      />
     </main>
   )
 }
