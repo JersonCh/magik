@@ -3,7 +3,9 @@ import type { Product } from "../../data/products"
 import type { BrandWithCount } from "../../lib/db"
 import {
   procesarContenidoCsv,
+  procesarBufferExcel,
   generarPlantillaCsv,
+  generarPlantillaExcel,
   type FilaCsvProcesada,
   type ResumenCsv,
 } from "../../lib/csvHelper"
@@ -27,6 +29,7 @@ export default function CsvImportModal({
   const [paso, setPaso] = useState<1 | 2 | 3>(1)
   const [nombreArchivo, setNombreArchivo] = useState("")
   const [tamanoArchivo, setTamanoArchivo] = useState("")
+  const [tipoArchivo, setTipoArchivo] = useState<"excel" | "csv">("excel")
   const [filas, setFilas] = useState<FilaCsvProcesada[]>([])
   const [resumen, setResumen] = useState<ResumenCsv>({ total: 0, validos: 0, duplicados: 0, conErrores: 0 })
   const [modoDuplicados, setModoDuplicados] = useState<"omitir" | "actualizar">("actualizar")
@@ -46,34 +49,69 @@ export default function CsvImportModal({
 
   if (!isOpen) return null
 
-  // Procesar archivo CSV
+  // Procesar archivo Excel (.xlsx / .xls) o CSV (.csv)
   const procesarArchivo = (file: File) => {
+    const ext = file.name.toLowerCase()
+    const esExcel = ext.endsWith(".xlsx") || ext.endsWith(".xls")
+    const esCsv = ext.endsWith(".csv")
+
+    if (!esExcel && !esCsv) {
+      setErrorGlobal("Por favor selecciona un archivo Excel (.xlsx, .xls) o CSV (.csv) válido.")
+      return
+    }
+
     setErrorGlobal(null)
     setNombreArchivo(file.name)
     setTamanoArchivo(`${(file.size / 1024).toFixed(1)} KB`)
+    setTipoArchivo(esExcel ? "excel" : "csv")
 
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      try {
-        const contenido = (e.target?.result as string) || ""
-        const resultado = procesarContenidoCsv(contenido, productos, marcas)
+    if (esExcel) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          const buffer = e.target?.result as ArrayBuffer
+          const resultado = procesarBufferExcel(buffer, productos, marcas)
 
-        if (resultado.filas.length === 0) {
-          setErrorGlobal("El archivo CSV está vacío o el formato de columnas no coincide.")
-          return
+          if (resultado.filas.length === 0) {
+            setErrorGlobal("El archivo Excel no contiene filas válidas o las cabeceras no coinciden.")
+            return
+          }
+
+          setFilas(resultado.filas)
+          setResumen(resultado.resumen)
+          setPaso(2)
+        } catch (err: any) {
+          setErrorGlobal(err?.message || "Error al procesar la hoja de cálculo de Excel.")
         }
-
-        setFilas(resultado.filas)
-        setResumen(resultado.resumen)
-        setPaso(2)
-      } catch (err: any) {
-        setErrorGlobal(err?.message || "Error al procesar el archivo CSV.")
       }
+      reader.onerror = () => {
+        setErrorGlobal("Error al leer el archivo Excel desde el dispositivo.")
+      }
+      reader.readAsArrayBuffer(file)
+    } else {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          const contenido = (e.target?.result as string) || ""
+          const resultado = procesarContenidoCsv(contenido, productos, marcas)
+
+          if (resultado.filas.length === 0) {
+            setErrorGlobal("El archivo CSV está vacío o el formato de columnas no coincide.")
+            return
+          }
+
+          setFilas(resultado.filas)
+          setResumen(resultado.resumen)
+          setPaso(2)
+        } catch (err: any) {
+          setErrorGlobal(err?.message || "Error al procesar el archivo CSV.")
+        }
+      }
+      reader.onerror = () => {
+        setErrorGlobal("Error al leer el archivo desde el dispositivo.")
+      }
+      reader.readAsText(file, "UTF-8")
     }
-    reader.onerror = () => {
-      setErrorGlobal("Error al leer el archivo desde el dispositivo.")
-    }
-    reader.readAsText(file, "UTF-8")
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,8 +125,22 @@ export default function CsvImportModal({
     if (file) procesarArchivo(file)
   }
 
-  // Descarga de plantilla CSV
-  const handleDownloadTemplate = () => {
+  // Descarga de plantilla Excel (.xlsx)
+  const handleDownloadExcelTemplate = () => {
+    const uint8 = generarPlantillaExcel()
+    const blob = new Blob([uint8], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.setAttribute("download", "plantilla_catalogo_magik.xlsx")
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  // Descarga de plantilla CSV (.csv)
+  const handleDownloadCsvTemplate = () => {
     const csvContent = generarPlantillaCsv()
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
@@ -150,16 +202,16 @@ export default function CsvImportModal({
     <div className="admin-modal-backdrop" onClick={onClose}>
       <div
         className="admin-modal-card"
-        style={{ width: "min(960px, 95vw)", maxHeight: "90vh", display: "flex", flexDirection: "column" }}
+        style={{ width: "min(980px, 95vw)", maxHeight: "90vh", display: "flex", flexDirection: "column" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cabecera del Modal */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
           <div>
-            <p className="eyebrow">HERRAMIENTAS ADMINISTRATIVAS</p>
+            <p className="eyebrow">HERRAMIENTAS ADMINISTRATIVAS · MAISON COMPATIBLE</p>
             <h3 style={{ margin: 0, fontSize: "22px" }}>
-              {paso === 1 && "Importación Masiva de Catálogo (CSV)"}
-              {paso === 2 && `Vista Previa: ${nombreArchivo} (${tamanoArchivo})`}
+              {paso === 1 && "Importación Masiva de Catálogo (Excel / CSV)"}
+              {paso === 2 && `Vista Previa: ${nombreArchivo} (${tamanoArchivo}) · ${tipoArchivo.toUpperCase()}`}
               {paso === 3 && "Resultado de la Importación"}
             </h3>
           </div>
@@ -193,7 +245,8 @@ export default function CsvImportModal({
         {paso === 1 && (
           <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
             <p className="desc" style={{ margin: 0 }}>
-              Carga tu catálogo de máquinas de corte, trimmers, repuestos y pomadas en lote. Puedes usar un archivo CSV exportado de Excel o Google Sheets.
+              Carga tu catálogo completo de máquinas de corte, trimmers, repuestos, cuchillas y pomadas en lote.
+              Admite tanto hojas de cálculo <strong>Microsoft Excel (.xlsx, .xls)</strong> como archivos <strong>CSV (.csv)</strong>.
             </p>
 
             <div
@@ -214,17 +267,17 @@ export default function CsvImportModal({
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileChange}
-                accept=".csv,text/csv"
+                accept=".xlsx,.xls,.csv"
                 style={{ display: "none" }}
               />
               <div style={{ fontSize: "28px", color: "var(--yellow)", marginBottom: "12px" }}>
                 <Icon name="filter" />
               </div>
               <strong style={{ fontSize: "14px", display: "block", marginBottom: "6px" }}>
-                Arrastra tu archivo CSV aquí o haz clic para seleccionarlo
+                Arrastra tu archivo Excel (.xlsx) o CSV (.csv) aquí o haz clic para seleccionarlo
               </strong>
               <small style={{ color: "#888", fontSize: "11px" }}>
-                Formato admitido: Archivo de valores separados por comas (.csv) en codificación UTF-8
+                Formatos compatibles: Microsoft Excel (.xlsx, .xls) y valores separados por comas (.csv)
               </small>
             </div>
 
@@ -237,24 +290,44 @@ export default function CsvImportModal({
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
+                flexWrap: "wrap",
+                gap: "12px",
               }}
             >
               <div>
                 <strong style={{ color: "var(--yellow)", fontSize: "12px", display: "block" }}>
-                  ¿No tienes el formato oficial?
+                  ¿Necesitas la plantilla oficial preformateada?
                 </strong>
                 <span style={{ color: "#aaa", fontSize: "11px" }}>
-                  Descarga la plantilla con encabezados estándar (`nombre, marca, modelo, categoria, precio, stock`).
+                  Incluye las columnas estándar (`nombre`, `marca`, `modelo`, `categoria`, `precio`, `precio_anterior`, `stock`, `badge`).
                 </span>
               </div>
-              <button
-                type="button"
-                className="button button--primary"
-                onClick={handleDownloadTemplate}
-                style={{ padding: "8px 14px", fontSize: "11px", whiteSpace: "nowrap" }}
-              >
-                Descargar plantilla CSV
-              </button>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                  type="button"
+                  className="button button--primary"
+                  onClick={handleDownloadExcelTemplate}
+                  style={{ padding: "8px 14px", fontSize: "11px", whiteSpace: "nowrap" }}
+                >
+                  Descargar Excel (.xlsx)
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadCsvTemplate}
+                  style={{
+                    padding: "8px 14px",
+                    fontSize: "11px",
+                    whiteSpace: "nowrap",
+                    background: "transparent",
+                    border: "1px solid #555",
+                    color: "white",
+                    borderRadius: "var(--radius-sm)",
+                    cursor: "pointer",
+                  }}
+                >
+                  Descargar CSV (.csv)
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -293,6 +366,7 @@ export default function CsvImportModal({
                 alignItems: "center",
                 justifyContent: "space-between",
                 gap: "14px",
+                flexWrap: "wrap",
               }}
             >
               <span style={{ fontSize: "12px", color: "#ccc" }}>

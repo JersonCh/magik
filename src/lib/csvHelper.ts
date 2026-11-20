@@ -1,3 +1,4 @@
+import * as XLSX from "xlsx"
 import type { Product } from "../data/products"
 import type { BrandWithCount } from "./db"
 
@@ -31,7 +32,7 @@ export interface ResumenCsv {
 }
 
 /**
- * Detecta si el delimitador más probable es coma (,) punto y coma (;) o tabulación (\t).
+ * Detecta si el delimitador más probable es coma (,), punto y coma (;) o tabulación (\t).
  */
 export function detectarDelimitador(texto: string): string {
   const primeraLinea = texto.split(/\r?\n/)[0] || ""
@@ -47,9 +48,9 @@ export function detectarDelimitador(texto: string): string {
 /**
  * Parser de CSV nativo compatible con comillas escapadas (""), saltos de línea y delimitadores variables.
  */
-export function parsearLineasCsv(texto: string, delimitador = ","): string[][] {
+export function parsearLineasCsv(texto: string, delimitador?: string): string[][] {
+  const delim = delimitador || detectarDelimitador(texto)
   const lineas: string[][] = []
-  // Eliminar BOM de UTF-8 si existe
   const limpio = texto.charCodeAt(0) === 0xfeff ? texto.slice(1) : texto
   const filasRaw = limpio.split(/\r?\n/).filter((l) => l.trim().length > 0)
 
@@ -65,11 +66,11 @@ export function parsearLineasCsv(texto: string, delimitador = ","): string[][] {
       if (char === '"') {
         if (dentroDeComillas && siguienteChar === '"') {
           valorActual += '"'
-          i++ // Saltear la segunda comilla
+          i++
         } else {
           dentroDeComillas = !dentroDeComillas
         }
-      } else if (char === delimitador && !dentroDeComillas) {
+      } else if (char === delim && !dentroDeComillas) {
         valores.push(valorActual.trim())
         valorActual = ""
       } else {
@@ -87,29 +88,60 @@ export function parsearLineasCsv(texto: string, delimitador = ","): string[][] {
 }
 
 /**
- * Procesa el contenido crudo de un archivo CSV validando reglas de negocio de Magik Barber Supply.
+ * Lee y convierte un ArrayBuffer de un archivo Excel (.xlsx o .xls) a una matriz de celdas de texto.
  */
-export function procesarContenidoCsv(
-  contenido: string,
+export function parsearArchivoExcel(buffer: ArrayBuffer): string[][] {
+  const data = new Uint8Array(buffer)
+  const wb = XLSX.read(data, { type: "array" })
+  if (!wb.SheetNames.length) return []
+
+  // Seleccionar la primera hoja que contenga registros
+  let sheetName = wb.SheetNames.find((name) => {
+    const lower = name.toLowerCase()
+    return (
+      (lower.includes("producto") || lower.includes("catalogo") || lower.includes("catálogo") || lower.includes("magik")) &&
+      !lower.includes("guia") &&
+      !lower.includes("instruccion")
+    )
+  })
+
+  if (!sheetName) {
+    sheetName = wb.SheetNames[0]
+  }
+
+  const ws = wb.Sheets[sheetName]
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" }) as any[][]
+  return rows.map((row) =>
+    Array.isArray(row)
+      ? row.map((cell) => (cell !== undefined && cell !== null ? String(cell).trim() : ""))
+      : []
+  )
+}
+
+/**
+ * Función núcleo que procesa cualquier matriz de celdas (provenga de Excel .xlsx o CSV plano),
+ * validando reglas de negocio, detectando duplicados y asignando marcas.
+ */
+export function procesarMatrizFilas(
+  matriz: string[][],
   productosActuales: Product[],
   marcasActuales: BrandWithCount[]
 ): {
   filas: FilaCsvProcesada[]
   resumen: ResumenCsv
 } {
-  const delimitador = detectarDelimitador(contenido)
-  const matriz = parsearLineasCsv(contenido, delimitador)
+  const filasNoVacias = matriz.filter((fila) => fila.some((celda) => celda && String(celda).trim().length > 0))
 
-  if (matriz.length < 2) {
+  if (filasNoVacias.length < 2) {
     return {
       filas: [],
       resumen: { total: 0, validos: 0, duplicados: 0, conErrores: 0 },
     }
   }
 
-  // 1. Normalizar cabeceras de columnas
-  const cabeceras = matriz[0].map((h) =>
-    h
+  // 1. Mapear encabezados dinámicamente
+  const cabeceras = filasNoVacias[0].map((h) =>
+    String(h)
       .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
@@ -142,8 +174,8 @@ export function procesarContenidoCsv(
 
   const filasResultado: FilaCsvProcesada[] = []
 
-  for (let i = 1; i < matriz.length; i++) {
-    const col = matriz[i]
+  for (let i = 1; i < filasNoVacias.length; i++) {
+    const col = filasNoVacias[i]
     const filaNumero = i + 1
     const errores: string[] = []
     const advertencias: string[] = []
@@ -153,13 +185,13 @@ export function procesarContenidoCsv(
     const marca = marcaRaw.toUpperCase()
     const modelo = idxModelo >= 0 ? col[idxModelo]?.trim() || nombre : nombre
     const categoria = idxCategoria >= 0 ? col[idxCategoria]?.trim() || "Cortadoras" : "Cortadoras"
-    const precioStr = idxPrecio >= 0 ? col[idxPrecio]?.replace(/[^0-9.]/g, "").trim() || "0" : "0"
+    const precioStr = idxPrecio >= 0 ? String(col[idxPrecio] || "").replace(/[^0-9.]/g, "").trim() || "0" : "0"
     const precio = parseFloat(precioStr)
 
-    const precioAntStr = idxPrecioAnt >= 0 ? col[idxPrecioAnt]?.replace(/[^0-9.]/g, "").trim() || "" : ""
+    const precioAntStr = idxPrecioAnt >= 0 ? String(col[idxPrecioAnt] || "").replace(/[^0-9.]/g, "").trim() || "" : ""
     const precioAnterior = precioAntStr ? parseFloat(precioAntStr) : undefined
 
-    const stockStr = (idxStock >= 0 ? col[idxStock]?.trim().toLowerCase() || "1" : "1")
+    const stockStr = (idxStock >= 0 ? String(col[idxStock] || "").trim().toLowerCase() || "1" : "1")
     const stock = !["0", "false", "no", "agotado", "sin stock"].includes(stockStr)
 
     const badge = idxBadge >= 0 ? col[idxBadge]?.trim() || undefined : undefined
@@ -183,7 +215,7 @@ export function procesarContenidoCsv(
     const esDuplicado = idExistente !== undefined
 
     if (esDuplicado) {
-      advertencias.push(`Ya existe en el catálogo (ID #${idExistente}).`)
+      advertencias.push(`Ya existe en el catálogo oficial (ID #${idExistente}).`)
     }
 
     const esValido = errores.length === 0
@@ -220,7 +252,66 @@ export function procesarContenidoCsv(
 }
 
 /**
- * Genera el texto CSV de la plantilla de ejemplo para importación masiva.
+ * Procesa un archivo Excel (.xlsx o .xls) desde su buffer binario.
+ */
+export function procesarBufferExcel(
+  buffer: ArrayBuffer,
+  productosActuales: Product[],
+  marcasActuales: BrandWithCount[]
+) {
+  const matriz = parsearArchivoExcel(buffer)
+  return procesarMatrizFilas(matriz, productosActuales, marcasActuales)
+}
+
+/**
+ * Procesa un archivo CSV plano en texto.
+ */
+export function procesarContenidoCsv(
+  contenido: string,
+  productosActuales: Product[],
+  marcasActuales: BrandWithCount[]
+) {
+  const delimitador = detectarDelimitador(contenido)
+  const matriz = parsearLineasCsv(contenido, delimitador)
+  return procesarMatrizFilas(matriz, productosActuales, marcasActuales)
+}
+
+/**
+ * Genera un archivo Excel (.xlsx) de plantilla con productos de ejemplo para barbería.
+ */
+export function generarPlantillaExcel(): Uint8Array {
+  const datos = [
+    ["nombre", "marca", "modelo", "categoria", "precio", "precio_anterior", "stock", "badge", "imagen", "descripcion"],
+    ["Cortadora Saber II", "STYLECRAFT", "Saber II", "Cortadoras", 950, 1100, 1, "Destacado", "/assets/a0f2f.png", "Motor magnético silencioso de 7200 RPM con cuchilla DLC"],
+    ["Trimmer Ghost", "JRL", "2020T Ghost", "Trimmers", 680, 750, 1, "Oferta", "/assets/311b5.png", "Cuchilla en T ultra afilada con autonomía de 2 horas"],
+    ["Afeitadora Prodigy", "STYLECRAFT", "Prodigy Foil", "Shaver", 420, "", 1, "Nuevo", "/assets/a0f2f.png", "Láminas de titanio dorado hipoalergénicas para afeitado al ras"],
+    ["Polvo de textura mate", "VASSO", "35 g", "Cuidado", 25, 30, 1, "Oferta", "/assets/2031c.png", "Fijación y volumen instantáneo acabado mate sin residuos"],
+    ["Combo Gold FX", "BABYLISS", "Clipper + Trimmer", "Combos", 1450, 1650, 1, "Combo", "/assets/a0f2f.png", "Edición especial dorada de alto torque para salón"],
+  ]
+
+  const ws = XLSX.utils.aoa_to_sheet(datos)
+  // Ancho de columnas
+  ws["!cols"] = [
+    { wch: 25 }, // nombre
+    { wch: 15 }, // marca
+    { wch: 18 }, // modelo
+    { wch: 14 }, // categoria
+    { wch: 10 }, // precio
+    { wch: 15 }, // precio_anterior
+    { wch: 8 },  // stock
+    { wch: 12 }, // badge
+    { wch: 20 }, // imagen
+    { wch: 45 }, // descripcion
+  ]
+
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, "Catálogo Magik")
+  const buffer = XLSX.write(wb, { bookType: "xlsx", type: "array" })
+  return new Uint8Array(buffer)
+}
+
+/**
+ * Genera el texto CSV de la plantilla de ejemplo.
  */
 export function generarPlantillaCsv(): string {
   const lineas = [
@@ -232,6 +323,44 @@ export function generarPlantillaCsv(): string {
     'Combo Gold FX,BABYLISS,Clipper + Trimmer,Combos,1450,1650,1,Combo,/assets/a0f2f.png,"Edición especial dorada de alto torque para uso en salón"',
   ]
   return "\uFEFF" + lineas.join("\r\n")
+}
+
+/**
+ * Exporta el catálogo actual a un libro Excel (.xlsx).
+ */
+export function exportarCatalogoExcel(productos: Product[]): Uint8Array {
+  const encabezados = ["id", "nombre", "marca", "modelo", "categoria", "precio", "precio_anterior", "stock", "badge", "imagen"]
+  const filas = productos.map((p) => [
+    p.id,
+    p.name,
+    p.brand,
+    p.model,
+    p.category,
+    p.price,
+    p.oldPrice || "",
+    p.stock ? 1 : 0,
+    p.badge || "",
+    p.image || "",
+  ])
+
+  const ws = XLSX.utils.aoa_to_sheet([encabezados, ...filas])
+  ws["!cols"] = [
+    { wch: 8 },  // id
+    { wch: 25 }, // nombre
+    { wch: 15 }, // marca
+    { wch: 18 }, // modelo
+    { wch: 14 }, // categoria
+    { wch: 10 }, // precio
+    { wch: 15 }, // precio_anterior
+    { wch: 8 },  // stock
+    { wch: 12 }, // badge
+    { wch: 22 }, // imagen
+  ]
+
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, "Productos")
+  const buffer = XLSX.write(wb, { bookType: "xlsx", type: "array" })
+  return new Uint8Array(buffer)
 }
 
 /**

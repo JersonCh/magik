@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { products as initialProducts, type Product } from "../../data/products"
 import type { BrandWithCount, StoreConfigMap } from "../../lib/db"
 import { defaultStoreConfig } from "../../lib/db"
-import { exportarCatalogoCsv } from "../../lib/csvHelper"
+import { exportarCatalogoCsv, exportarCatalogoExcel } from "../../lib/csvHelper"
 import Icon from "./Icon"
 import CsvImportModal from "./CsvImportModal"
 
@@ -111,6 +111,28 @@ export default function AdminDashboard() {
     setToastMessage(msg)
     setSaved(true)
     setTimeout(() => setSaved(false), 2400)
+  }
+
+  // Exportar catálogo completo a Excel (.xlsx)
+  const handleExportExcel = () => {
+    try {
+      const uint8 = exportarCatalogoExcel(productList)
+      const blob = new Blob([uint8], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      const dateStr = new Date().toISOString().split("T")[0]
+      link.href = url
+      link.setAttribute("download", `catalogo_magik_${dateStr}.xlsx`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      triggerToast("Catálogo exportado exitosamente a Excel (.xlsx)")
+    } catch {
+      triggerToast("Error al exportar archivo Excel")
+    }
   }
 
   // Exportar catálogo completo a CSV
@@ -501,6 +523,27 @@ export default function AdminDashboard() {
             <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
               <button
                 type="button"
+                onClick={handleExportExcel}
+                style={{
+                  background: "white",
+                  border: "1px solid var(--line)",
+                  color: "var(--ink)",
+                  padding: "9px 14px",
+                  fontSize: "12px",
+                  borderRadius: "var(--radius-sm)",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontFamily: "var(--font-medium)",
+                }}
+                title="Descargar todo el catálogo a Microsoft Excel (.xlsx)"
+              >
+                <Icon name="arrow" /> Exportar Excel
+              </button>
+
+              <button
+                type="button"
                 onClick={handleExportCsv}
                 style={{
                   background: "white",
@@ -515,7 +558,7 @@ export default function AdminDashboard() {
                   gap: "6px",
                   fontFamily: "var(--font-medium)",
                 }}
-                title="Descargar todo el catálogo a Excel / CSV"
+                title="Descargar catálogo a formato CSV plano (.csv)"
               >
                 <Icon name="arrow" /> Exportar CSV
               </button>
@@ -536,9 +579,9 @@ export default function AdminDashboard() {
                   gap: "6px",
                   fontFamily: "var(--font-medium)",
                 }}
-                title="Carga masiva desde archivo CSV o Excel"
+                title="Carga masiva desde archivo Excel (.xlsx, .xls) o CSV (.csv)"
               >
-                <Icon name="filter" /> Importar CSV
+                <Icon name="filter" /> Importar Excel / CSV
               </button>
 
               <button
