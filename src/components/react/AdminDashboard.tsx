@@ -357,7 +357,7 @@ export default function AdminDashboard() {
       <main className="admin-login">
         <div>
           <span className="logo-crop">
-            <img src={`${A}9f199.png`} alt="Magik Barber Supply" />
+            <img src={`${A}logobg.jpg`} alt="Magik Barber Supply" width="88" height="88" />
           </span>
           <p>ACCESO ADMINISTRATIVO</p>
           <h1>Gestor de Tienda</h1>

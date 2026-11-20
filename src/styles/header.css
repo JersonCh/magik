@@ -37,25 +37,28 @@
   padding: 0;
   border: 0;
   background: none;
-  width: 120px;
-  height: 78px;
-  display: block;
+  width: auto;
+  height: auto;
+  display: inline-flex;
+  align-items: center;
   cursor: pointer;
   text-decoration: none;
+  line-height: 0;
 }
 
 .logo-crop {
-  display: block;
-  width: 120px;
-  height: 78px;
-  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 82px;
+  height: 82px;
+  overflow: visible;
 }
 
 .logo-crop img {
-  width: 120px;
-  height: 90px;
-  object-fit: cover;
-  object-position: center top;
+  width: 82px;
+  height: 82px;
+  object-fit: contain;
   display: block;
 }
 

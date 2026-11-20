@@ -503,7 +503,18 @@
 }
 
 .admin-login .logo-crop {
+  width: 88px;
+  height: 88px;
+  display: block;
   margin-bottom: 25px;
+  overflow: visible;
+}
+
+.admin-login .logo-crop img {
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  display: block;
 }
 
 .admin-login > div > p {

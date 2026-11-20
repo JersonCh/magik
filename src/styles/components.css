@@ -553,6 +553,28 @@ footer {
   padding-bottom: 50px;
 }
 
+.footer-logo-link {
+  display: inline-block;
+  text-decoration: none;
+  margin-bottom: 14px;
+}
+
+.footer-brand .logo-crop {
+  width: 78px;
+  height: 78px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: visible;
+}
+
+.footer-brand .logo-crop img {
+  width: 78px;
+  height: 78px;
+  object-fit: contain;
+  display: block;
+}
+
 .footer-brand p,
 footer p {
   font-size: 11px;
