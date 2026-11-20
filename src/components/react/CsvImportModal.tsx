@@ -128,7 +128,9 @@ export default function CsvImportModal({
   // Descarga de plantilla Excel (.xlsx)
   const handleDownloadExcelTemplate = () => {
     const uint8 = generarPlantillaExcel()
-    const blob = new Blob([uint8], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+    const blob = new Blob([uint8.buffer as ArrayBuffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    })
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url

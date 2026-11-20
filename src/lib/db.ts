@@ -222,6 +222,7 @@ export async function saveProduct(
         }
         return fallbackProducts[index]
       }
+      return null
     } else {
       const newProduct: Product = {
         id: Math.max(...fallbackProducts.map((p) => p.id), 0) + 1,

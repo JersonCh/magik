@@ -117,7 +117,7 @@ export default function AdminDashboard() {
   const handleExportExcel = () => {
     try {
       const uint8 = exportarCatalogoExcel(productList)
-      const blob = new Blob([uint8], {
+      const blob = new Blob([uint8.buffer as ArrayBuffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       })
       const url = URL.createObjectURL(blob)
@@ -412,10 +412,10 @@ export default function AdminDashboard() {
       statusFilter === "Todos"
         ? true
         : statusFilter === "Disponibles"
-        ? p.stock
-        : statusFilter === "Agotados"
-        ? !p.stock
-        : true
+          ? p.stock
+          : statusFilter === "Agotados"
+            ? !p.stock
+            : true
 
     return matchesSearch && matchesCategory && matchesBrand && matchesStatus
   })
