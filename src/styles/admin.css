@@ -50,6 +50,18 @@
   width: 100%;
 }
 
+.admin-login .field input,
+.admin-login .field select,
+.admin-login .field textarea {
+  color: var(--ink);
+  background: var(--paper, #ffffff);
+  caret-color: var(--ink);
+}
+
+.admin-login .field input::placeholder {
+  color: #777777;
+}
+
 .admin-login small {
   display: block;
   text-align: center;

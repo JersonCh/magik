@@ -63,7 +63,7 @@ export default function AdminLogin({ onLoginSuccess }: AdminLoginProps) {
           </label>
 
           {loginError && (
-            <div style={{ color: "var(--danger)", fontSize: "11px", marginBottom: "15px" }} role="alert">
+            <div style={{ color: "#ff8c82", fontSize: "11px", marginBottom: "15px" }} role="alert">
               {loginError}
             </div>
           )}
