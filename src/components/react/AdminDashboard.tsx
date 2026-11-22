@@ -3,6 +3,7 @@ import { products as initialProducts } from "../../data/products"
 import {
   getDefaultStoreConfig,
   type Product,
+  type CategoryItem,
   type BrandWithCount,
   type StoreConfigMap,
 } from "@/types/domain"
@@ -27,11 +28,11 @@ export default function AdminDashboard() {
   const [toastMessage, setToastMessage] = useState("Cambios guardados correctamente")
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Estado de Productos
+  // Estado de Productos y Categorías
   const [productList, setProductList] = useState<Product[]>(initialProducts)
+  const [categoriesList, setCategoriesList] = useState<CategoryItem[]>([])
   const [editingProduct, setEditingProduct] = useState<Product>({ ...initialProducts[0] })
   const [isNewProduct, setIsNewProduct] = useState(false)
-  const [description, setDescription] = useState("Descripción detallada del equipo profesional para barbería.")
   const [productToDelete, setProductToDelete] = useState<Product | null>(null)
 
   // Estado de Marcas
@@ -93,9 +94,11 @@ export default function AdminDashboard() {
           const dataP = await resP.json()
           const prods = Array.isArray(dataP.products) ? dataP.products : []
           setProductList(prods)
+          if (Array.isArray(dataP.categories)) {
+            setCategoriesList(dataP.categories)
+          }
           if (prods.length > 0) {
             setEditingProduct(prods[0])
-            setDescription(prods[0].description || "")
           }
         }
 
@@ -183,18 +186,28 @@ export default function AdminDashboard() {
   }
 
   const handleSaveProduct = async () => {
+    const activeImages =
+      editingProduct.images && editingProduct.images.length > 0
+        ? editingProduct.images
+        : [editingProduct.image || `${A}a0f2f.png`]
+
     const payload = {
       id: isNewProduct ? undefined : editingProduct.id,
       name: editingProduct.name,
       brand: editingProduct.brand,
-      model: editingProduct.model,
+      model: editingProduct.model || "",
+      sku: editingProduct.sku || undefined,
       category: editingProduct.category || "Cortadoras",
       price: Number(editingProduct.price),
       oldPrice: editingProduct.oldPrice ? Number(editingProduct.oldPrice) : undefined,
       stock: editingProduct.stock,
       badge: editingProduct.badge || undefined,
-      image: editingProduct.image || `${A}a0f2f.png`,
-      description,
+      image: activeImages[0],
+      images: activeImages,
+      description: editingProduct.description,
+      technicalSpecs: editingProduct.technicalSpecs,
+      boxContents: editingProduct.boxContents,
+      status: editingProduct.status || "publicado",
     }
 
     try {
@@ -255,7 +268,6 @@ export default function AdminDashboard() {
           const remaining = productList.filter((p) => p.id !== id)
           if (remaining.length > 0) {
             setEditingProduct(remaining[0])
-            setDescription(remaining[0].description || "")
           }
         }
         triggerToast(`Producto "${productToDelete.name}" eliminado`)
@@ -274,17 +286,18 @@ export default function AdminDashboard() {
     setIsNewProduct(true)
     const newDraft: Product = {
       id: 0,
-      name: "Nueva máquina o accesorio",
+      name: "Nuevo producto",
       brand: brandsList[0]?.nombre || "STYLECRAFT",
-      model: "Pro 2026",
+      model: "",
       price: 150,
       image: `${A}a0f2f.png`,
-      category: "Cortadoras",
+      images: [`${A}a0f2f.png`],
+      category: categoriesList[0]?.name || "Cortadoras",
       stock: true,
       badge: "Nuevo",
+      status: "publicado",
     }
     setEditingProduct(newDraft)
-    setDescription("Equipo profesional para barbería de alta precisión.")
   }
 
   // --- ACCIONES DE MARCAS ---
@@ -431,9 +444,11 @@ export default function AdminDashboard() {
         const dataP = await resP.json()
         const prods = Array.isArray(dataP.products) ? dataP.products : []
         setProductList(prods)
+        if (Array.isArray(dataP.categories)) {
+          setCategoriesList(dataP.categories)
+        }
         if (prods.length > 0) {
           setEditingProduct(prods[0])
-          setDescription(prods[0].description || "")
         }
       }
       if (resB.ok) {
@@ -646,12 +661,12 @@ export default function AdminDashboard() {
               <ProductsTab
                 productList={productList}
                 brandsList={brandsList}
+                categoriesList={categoriesList}
                 editingProduct={editingProduct}
                 isNewProduct={isNewProduct}
                 onSelectProduct={(p) => {
                   setIsNewProduct(false)
                   setEditingProduct({ ...p })
-                  setDescription(p.description || "")
                 }}
                 onToggleStock={toggleStock}
                 onRequestDeleteProduct={(p) => setProductToDelete(p)}
@@ -661,9 +676,8 @@ export default function AdminDashboard() {
                 isNewProduct={isNewProduct}
                 editingProduct={editingProduct}
                 brandsList={brandsList}
-                description={description}
+                categoriesList={categoriesList}
                 onChangeProduct={(p) => setEditingProduct(p)}
-                onChangeDescription={(desc) => setDescription(desc)}
                 onSaveProduct={handleSaveProduct}
               />
             </div>

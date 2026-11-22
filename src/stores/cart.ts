@@ -109,18 +109,23 @@ export function closeDrawer() {
   $isDrawerOpen.set(false)
 }
 
+function isSameCartLine(item: CartItem, productId: number, variant?: string): boolean {
+  return item.id === productId && (item.selectedVariant || "") === (variant || "")
+}
+
 export function addToCart(product: Product, variant?: string, quantity = 1) {
   if (!product.stock) return
 
   const items = $cart.get()
-  const existingIndex = items.findIndex((i) => i.id === product.id)
+  const resolvedVariant = variant ?? product.variant
+  const existingIndex = items.findIndex((i) => isSameCartLine(i, product.id, resolvedVariant))
 
   if (existingIndex > -1) {
     const updated = [...items]
     updated[existingIndex] = {
       ...updated[existingIndex],
       quantity: updated[existingIndex].quantity + quantity,
-      selectedVariant: variant || updated[existingIndex].selectedVariant,
+      price: product.price,
     }
     $cart.set(updated)
   } else {
@@ -129,30 +134,32 @@ export function addToCart(product: Product, variant?: string, quantity = 1) {
       {
         ...product,
         quantity,
-        selectedVariant: variant || product.variant,
+        selectedVariant: resolvedVariant,
       },
     ])
   }
 
-  showToast(`¡${product.name} añadido a tu pedido!`)
+  showToast(`¡${product.name} añadido al carrito!`)
   $isDrawerOpen.set(true)
 }
 
-export function updateQuantity(id: number, quantity: number) {
+export function updateQuantity(id: number, quantity: number, variant?: string) {
   if (quantity <= 0) {
-    removeFromCart(id)
+    removeFromCart(id, variant)
     return
   }
   const items = $cart.get()
   $cart.set(
-    items.map((item) => (item.id === id ? { ...item, quantity } : item))
+    items.map((item) =>
+      isSameCartLine(item, id, variant) ? { ...item, quantity } : item
+    )
   )
 }
 
-export function removeFromCart(id: number) {
+export function removeFromCart(id: number, variant?: string) {
   const items = $cart.get()
-  const removed = items.find((item) => item.id === id)
-  $cart.set(items.filter((item) => item.id !== id))
+  const removed = items.find((item) => isSameCartLine(item, id, variant))
+  $cart.set(items.filter((item) => !isSameCartLine(item, id, variant)))
   if (removed) {
     showToast(`Eliminado: ${removed.name}`)
   }

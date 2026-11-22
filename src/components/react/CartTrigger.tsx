@@ -10,10 +10,10 @@ export default function CartTrigger() {
       type="button"
       className="button button--ghost cart-trigger"
       onClick={openDrawer}
-      aria-label="Abrir resumen de pedido"
+      aria-label="Abrir carrito"
     >
       <Icon name="bag" />
-      <span>Mi pedido</span>
+      <span>Carrito</span>
       <b>{count}</b>
     </button>
   )

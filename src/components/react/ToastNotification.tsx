@@ -97,7 +97,7 @@ export default function ToastNotification() {
           whiteSpace: "nowrap",
         }}
       >
-        Ver pedido
+        Ver carrito
       </button>
 
       <button

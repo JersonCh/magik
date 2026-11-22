@@ -1,4 +1,4 @@
-import { STORE_CONFIG_KEYS, type StoreConfigKey } from "../../types/domain"
+import { STORE_CONFIG_KEYS, type ProductStatus, type StoreConfigKey } from "../../types/domain"
 
 export type ValidationResult<T> =
   | { ok: true; data: T }
@@ -7,6 +7,7 @@ export type ValidationResult<T> =
 export const MAX_IMPORT_ROWS = 500
 
 const ALLOWED_BADGES = new Set(["Destacado", "Oferta", "Nuevo", "Combo"])
+const ALLOWED_STATUSES = new Set<ProductStatus>(["publicado", "borrador"])
 const ALLOWED_CONFIG_KEYS = new Set<string>(STORE_CONFIG_KEYS)
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -40,13 +41,18 @@ export interface ValidatedProductInput {
   name: string
   brand: string
   model: string
+  sku?: string
   category: string
   price: number
   oldPrice?: number
   image: string
+  images: string[]
   stock: boolean
   description?: string
+  technicalSpecs?: string
+  boxContents?: string
   badge?: string
+  status: ProductStatus
 }
 
 export function validateProductInput(body: unknown): ValidationResult<ValidatedProductInput> {
@@ -72,7 +78,10 @@ export function validateProductInput(body: unknown): ValidationResult<ValidatedP
   }
 
   const modelRaw = typeof body.model === "string" ? body.model.trim() : ""
-  const model = (modelRaw || name).slice(0, 120)
+  const model = modelRaw.slice(0, 120)
+
+  const skuRaw = typeof body.sku === "string" ? body.sku.trim() : ""
+  const sku = skuRaw ? skuRaw.slice(0, 60) : undefined
 
   const categoryRaw = typeof body.category === "string" ? body.category.trim() : ""
   const category = (categoryRaw || "Cortadoras").slice(0, 80)
@@ -102,9 +111,25 @@ export function validateProductInput(body: unknown): ValidationResult<ValidatedP
     }
   }
 
-  const imageRaw = typeof body.image === "string" && body.image.trim() ? body.image.trim() : "/assets/a0f2f.png"
-  if (!isSafeImageUrl(imageRaw)) {
-    return { ok: false, error: "La URL de imagen no tiene un formato seguro permitido." }
+  const images: string[] = []
+  if (Array.isArray(body.images)) {
+    for (const entry of body.images.slice(0, 3)) {
+      if (typeof entry === "string" && entry.trim()) {
+        const cleanUrl = entry.trim()
+        if (!isSafeImageUrl(cleanUrl)) {
+          return { ok: false, error: "Una de las URLs de imagen no tiene un formato seguro permitido." }
+        }
+        images.push(cleanUrl)
+      }
+    }
+  }
+
+  if (images.length === 0) {
+    const imageRaw = typeof body.image === "string" && body.image.trim() ? body.image.trim() : "/assets/a0f2f.png"
+    if (!isSafeImageUrl(imageRaw)) {
+      return { ok: false, error: "La URL de imagen no tiene un formato seguro permitido." }
+    }
+    images.push(imageRaw)
   }
 
   let badge: string | undefined
@@ -118,9 +143,22 @@ export function validateProductInput(body: unknown): ValidationResult<ValidatedP
     }
   }
 
+  const statusRaw = typeof body.status === "string" ? (body.status.trim().toLowerCase() as ProductStatus) : "publicado"
+  const status: ProductStatus = ALLOWED_STATUSES.has(statusRaw) ? statusRaw : "publicado"
+
   const description =
     typeof body.description === "string" && body.description.trim()
       ? body.description.trim().slice(0, 2000)
+      : undefined
+
+  const technicalSpecs =
+    typeof body.technicalSpecs === "string" && body.technicalSpecs.trim()
+      ? body.technicalSpecs.trim().slice(0, 3000)
+      : undefined
+
+  const boxContents =
+    typeof body.boxContents === "string" && body.boxContents.trim()
+      ? body.boxContents.trim().slice(0, 2000)
       : undefined
 
   return {
@@ -130,13 +168,18 @@ export function validateProductInput(body: unknown): ValidationResult<ValidatedP
       name,
       brand,
       model,
+      sku,
       category,
       price,
       oldPrice,
-      image: imageRaw,
+      image: images[0],
+      images,
       stock,
       description,
+      technicalSpecs,
+      boxContents,
       badge,
+      status,
     },
   }
 }

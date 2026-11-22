@@ -10,24 +10,51 @@ export interface D1Database {
   batch<T = unknown>(statements: D1PreparedStatement[]): Promise<Array<{ results: T[]; success: boolean }>>
 }
 
+export interface R2ObjectBody {
+  arrayBuffer(): Promise<ArrayBuffer>
+  httpEtag: string
+  httpMetadata?: {
+    contentType?: string
+  }
+}
+
+export interface R2Bucket {
+  get(key: string): Promise<R2ObjectBody | null>
+  put(
+    key: string,
+    value: ArrayBuffer | Uint8Array | string,
+    options?: {
+      httpMetadata?: {
+        contentType?: string
+      }
+    }
+  ): Promise<unknown>
+  delete(key: string): Promise<void>
+}
+
 export interface DbBrand {
   id: number
   nombre: string
   slug: string
   descripcion?: string | null
+  logo_key?: string | null
   activo: number
   created_at: string
+  updated_at: string
 }
 
 export interface DbCategory {
   id: number
+  parent_id?: number | null
+  parent_nombre?: string | null
   nombre: string
   slug: string
   descripcion?: string | null
-  imagen_url?: string | null
+  imagen_key?: string | null
   orden: number
   activo: number
   created_at: string
+  updated_at: string
 }
 
 export interface DbProduct {
@@ -36,20 +63,33 @@ export interface DbProduct {
   categoria_id: number
   nombre: string
   slug: string
-  modelo: string
+  modelo?: string | null
+  sku?: string | null
   descripcion?: string | null
-  precio: number
-  precio_anterior?: number | null
-  imagen_principal: string
+  caracteristicas_tecnicas?: string | null
+  contenido_caja?: string | null
+  precio_centimos: number
+  precio_anterior_centimos?: number | null
   stock: number
-  badge?: string | null
-  es_destacado: number
-  activo: number
+  etiqueta: "ninguna" | "destacado" | "oferta" | "nuevo" | "combo"
+  estado: "borrador" | "publicado" | "archivado"
   created_at: string
   updated_at: string
   // Joins
   marca_nombre?: string
   categoria_nombre?: string
+  categoria_padre_nombre?: string | null
+}
+
+export interface DbProductImage {
+  id: number
+  producto_id: number
+  variante_id?: number | null
+  clave_archivo: string
+  texto_alternativo?: string | null
+  orden: number
+  es_principal: number
+  created_at: string
 }
 
 export interface DbVariant {
@@ -57,28 +97,18 @@ export interface DbVariant {
   producto_id: number
   nombre_variante: string
   sku?: string | null
-  precio_ajuste: number
+  precio_centimos?: number | null
   stock: number
+  orden: number
   activo: number
   created_at: string
-}
-
-export interface DbOrder {
-  id: number
-  codigo: string
-  cliente_nombre: string
-  cliente_telefono?: string | null
-  modalidad_entrega: "Recojo en tienda" | "Envío a domicilio" | "Shalom" | "Olva Courier"
-  direccion_entrega?: string | null
-  observaciones?: string | null
-  subtotal: number
-  estado: "pendiente" | "confirmado" | "entregado" | "cancelado"
-  created_at: string
+  updated_at: string
 }
 
 export interface DbConfig {
   clave: string
   valor: string
   descripcion?: string | null
+  categoria?: string
   updated_at: string
 }

@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro"
-import { getProducts, saveProduct, deleteProduct } from "../../../lib/db"
+import { getProducts, getCategoryTree, saveProduct, deleteProduct } from "../../../lib/db"
 import { requireAdmin } from "../../../lib/auth/adminSession"
 import { validatePositiveInt, validateProductInput } from "../../../lib/validators/admin"
 
@@ -15,8 +15,11 @@ export const GET: APIRoute = async ({ request, locals }) => {
   if ("response" in auth) return auth.response
 
   try {
-    const products = await getProducts(locals)
-    return new Response(JSON.stringify({ success: true, products }), {
+    const [products, categories] = await Promise.all([
+      getProducts(locals, { includeDrafts: true }),
+      getCategoryTree(locals),
+    ])
+    return new Response(JSON.stringify({ success: true, products, categories }), {
       status: 200,
       headers: NO_STORE_JSON,
     })

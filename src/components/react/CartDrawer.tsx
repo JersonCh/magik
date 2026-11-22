@@ -29,7 +29,7 @@ export default function CartDrawer() {
       >
         <div className="drawer-head">
           <div>
-            <p>MI PEDIDO</p>
+            <p>CARRITO</p>
             <h2>
               {items.length} {items.length === 1 ? "producto" : "productos"}
             </h2>
@@ -37,7 +37,7 @@ export default function CartDrawer() {
           <button
             type="button"
             onClick={closeDrawer}
-            aria-label="Cerrar pedido"
+            aria-label="Cerrar carrito"
           >
             <Icon name="close" />
           </button>
@@ -55,7 +55,7 @@ export default function CartDrawer() {
                   <div className="quantity">
                     <button
                       type="button"
-                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      onClick={() => updateQuantity(item.id, item.quantity - 1, item.selectedVariant)}
                       aria-label="Disminuir cantidad"
                     >
                       <Icon name="minus" />
@@ -63,7 +63,7 @@ export default function CartDrawer() {
                     <b>{item.quantity}</b>
                     <button
                       type="button"
-                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      onClick={() => updateQuantity(item.id, item.quantity + 1, item.selectedVariant)}
                       aria-label="Aumentar cantidad"
                     >
                       <Icon name="plus" />
@@ -73,7 +73,7 @@ export default function CartDrawer() {
                 <button
                   type="button"
                   className="delete"
-                  onClick={() => removeFromCart(item.id)}
+                  onClick={() => removeFromCart(item.id, item.selectedVariant)}
                   aria-label="Eliminar producto"
                 >
                   <Icon name="trash" />
@@ -85,7 +85,7 @@ export default function CartDrawer() {
               <span>
                 <Icon name="bag" />
               </span>
-              <h2>Tu pedido está vacío</h2>
+              <h2>Tu carrito está vacío</h2>
               <p>Agrega productos desde el catálogo.</p>
             </div>
           )}
@@ -98,11 +98,11 @@ export default function CartDrawer() {
               <strong>S/{subtotal}</strong>
             </div>
             <a
-              href="/pedido"
+              href="/carrito"
               className="button button--primary"
               onClick={closeDrawer}
             >
-              Revisar y enviar pedido
+              Revisar carrito y enviar
             </a>
             <p>Envío y stock final por confirmar.</p>
           </div>

@@ -68,7 +68,7 @@ export const products: Product[] = [
     model: "Ceramic",
     price: 280,
     image: `${A}c25e4.png`,
-    category: "Planchas",
+    category: "Planchadoras",
     stock: true,
   },
   {
@@ -100,7 +100,7 @@ export const categories: [string, string, string][] = [
   ["Trimmers", "Trimmers y patilleras", "51ea8.png"],
   ["Shavers", "Shavers y afeitadoras", "16698.png"],
   ["Secadoras", "Secadoras", "9e02f.png"],
-  ["Planchas", "Planchas y rizadoras", "c25e4.png"],
+  ["Planchadoras", "Planchadoras profesionales", "c25e4.png"],
   ["Cuidado", "Cuidado del cabello y barba", "682ff.png"],
   ["Accesorios", "Accesorios y repuestos", "71f4e.png"],
 ]

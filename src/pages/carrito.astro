@@ -1,0 +1,26 @@
+---
+import Layout from "../layouts/Layout.astro"
+import CartOrderSummary from "../components/react/CartOrderSummary"
+import ShippingCourierTabs from "../components/react/ShippingCourierTabs"
+---
+
+<Layout title="Mi Carrito | Magik Barber Supply Tacna" currentPath="/carrito">
+  <main class="page shell">
+    <p class="breadcrumb">
+      <a href="/">Inicio</a> / Carrito
+    </p>
+
+    <div class="page-intro">
+      <p>MI CARRITO</p>
+      <h1>Revisa antes de enviar</h1>
+      <span>
+        Podrás confirmar disponibilidad, entrega y costo de envío por WhatsApp.
+      </span>
+    </div>
+
+    <CartOrderSummary client:load />
+
+    <!-- Guía logística y operadores de envío Perú -->
+    <ShippingCourierTabs client:visible />
+  </main>
+</Layout>

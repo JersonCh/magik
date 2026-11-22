@@ -62,7 +62,7 @@ export default function CartOrderSummary() {
         <span>
           <Icon name="bag" />
         </span>
-        <h2>Tu pedido está vacío</h2>
+        <h2>Tu carrito está vacío</h2>
         <p>Explora el catálogo y agrega los productos que necesitas.</p>
         <a href="/catalogo" className="button button--primary" style={{ marginTop: "14px" }}>
           Explorar catálogo
@@ -91,7 +91,7 @@ export default function CartOrderSummary() {
               <div className="quantity">
                 <button
                   type="button"
-                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                  onClick={() => updateQuantity(item.id, item.quantity - 1, item.selectedVariant)}
                   aria-label="Reducir cantidad"
                 >
                   <Icon name="minus" />
@@ -99,7 +99,7 @@ export default function CartOrderSummary() {
                 <b>{item.quantity}</b>
                 <button
                   type="button"
-                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                  onClick={() => updateQuantity(item.id, item.quantity + 1, item.selectedVariant)}
                   aria-label="Aumentar cantidad"
                 >
                   <Icon name="plus" />
@@ -109,7 +109,7 @@ export default function CartOrderSummary() {
               <button
                 type="button"
                 className="delete"
-                onClick={() => removeFromCart(item.id)}
+                onClick={() => removeFromCart(item.id, item.selectedVariant)}
                 aria-label="Eliminar producto"
               >
                 <Icon name="trash" />

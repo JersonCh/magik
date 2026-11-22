@@ -13,5 +13,11 @@
       "database_id": "magik-local-d1-id",
       "migrations_dir": "migrations"
     }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "magik-imagenes"
+    }
   ]
 }

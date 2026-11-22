@@ -1,19 +1,12 @@
 import { useState } from "react"
-import type { Product, BrandWithCount } from "@/types/domain"
+import type { BrandWithCount, CategoryItem, Product } from "@/types/domain"
 import Icon from "../Icon"
-
-const CATEGORY_OPTIONS = [
-  "Cortadoras",
-  "Trimmers",
-  "Shaver",
-  "Cuidado",
-  "Accesorios",
-  "Combos",
-]
+import CategoryOptions from "./CategoryOptions"
 
 interface ProductsTabProps {
   productList: Product[]
   brandsList: BrandWithCount[]
+  categoriesList: CategoryItem[]
   editingProduct: Product
   isNewProduct: boolean
   onSelectProduct: (p: Product) => void
@@ -24,6 +17,7 @@ interface ProductsTabProps {
 export default function ProductsTab({
   productList,
   brandsList,
+  categoriesList,
   editingProduct,
   isNewProduct,
   onSelectProduct,
@@ -36,7 +30,7 @@ export default function ProductsTab({
   const [statusFilter, setStatusFilter] = useState("Todos")
 
   const filteredProducts = productList.filter((p) => {
-    const matchesSearch = `${p.name} ${p.brand} ${p.model}`
+    const matchesSearch = `${p.name} ${p.brand} ${p.model || ""} ${p.sku || ""}`
       .toLowerCase()
       .includes(searchTerm.toLowerCase())
     const matchesCategory =
@@ -47,24 +41,23 @@ export default function ProductsTab({
       statusFilter === "Todos"
         ? true
         : statusFilter === "Disponibles"
-        ? p.stock
-        : statusFilter === "Agotados"
-        ? !p.stock
-        : true
+          ? p.stock
+          : statusFilter === "Agotados"
+            ? !p.stock
+            : true
 
     return matchesSearch && matchesCategory && matchesBrand && matchesStatus
   })
 
   return (
     <div className="admin-table">
-      {/* Barra de Filtros */}
       <div
         className="table-toolbar"
-        style={{ gridTemplateColumns: "1fr 140px 140px 130px", marginBottom: "15px" }}
+        style={{ gridTemplateColumns: "1fr 150px 140px 120px", marginBottom: "15px" }}
       >
         <label className="field" style={{ margin: 0 }}>
           <input
-            placeholder="Buscar por nombre, marca o modelo..."
+            placeholder="Buscar por nombre, marca, modelo o SKU..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -76,11 +69,7 @@ export default function ProductsTab({
             onChange={(e) => setCategoryFilter(e.target.value)}
           >
             <option value="Todas">Todas las cat.</option>
-            {CATEGORY_OPTIONS.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
+            <CategoryOptions categories={categoriesList} />
           </select>
         </label>
 
@@ -138,8 +127,13 @@ export default function ProductsTab({
             <div className="table-product">
               <img src={p.image} alt={p.name} />
               <span>
-                <strong>{p.name}</strong>
-                <small>{p.model}</small>
+                <strong>
+                  {p.name}
+                  {p.status === "borrador" && (
+                    <em className="draft-tag">Borrador</em>
+                  )}
+                </strong>
+                <small>{p.model || p.category}</small>
               </span>
             </div>
 

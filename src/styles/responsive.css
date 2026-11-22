@@ -282,7 +282,8 @@
   .detail-info h1 {
     font-size: 38px;
   }
-  .detail-tabs {
+  .detail-tabs,
+  .detail-tabs.detail-tabs--two {
     grid-template-columns: 1fr;
   }
   .related {

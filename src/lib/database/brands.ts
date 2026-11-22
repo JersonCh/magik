@@ -1,18 +1,9 @@
 import { products as fallbackProducts, brands as fallbackBrands } from "../../data/products"
 import type { BrandWithCount } from "../../types/domain"
 import type { DbBrand } from "../../types/database"
-import { getDb } from "./client"
+import { getDb, normalizeSlug } from "./client"
 
 export type { BrandWithCount }
-
-function normalizeSlug(text: string): string {
-  return text
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-}
 
 function getFallbackBrandsWithCounts(): BrandWithCount[] {
   return fallbackBrands.map((b, idx) => ({
@@ -45,7 +36,7 @@ export async function getBrands(env?: unknown): Promise<string[]> {
 }
 
 /**
- * Obtiene las marcas con el total de productos asociados
+ * Obtiene las marcas con el total de productos asociados (no archivados)
  */
 export async function getBrandsWithCounts(env?: unknown): Promise<BrandWithCount[]> {
   const db = getDb(env)
@@ -57,7 +48,7 @@ export async function getBrandsWithCounts(env?: unknown): Promise<BrandWithCount
     const query = `
       SELECT m.id, m.nombre, m.slug, m.activo, COUNT(p.id) AS total_productos
       FROM marcas m
-      LEFT JOIN productos p ON p.marca_id = m.id AND p.activo = 1
+      LEFT JOIN productos p ON p.marca_id = m.id AND p.estado != 'archivado'
       WHERE m.activo = 1
       GROUP BY m.id, m.nombre, m.slug, m.activo
       ORDER BY m.nombre ASC
@@ -139,7 +130,7 @@ export async function saveBrand(
       .prepare(`
         SELECT m.id, m.nombre, m.slug, m.activo, COUNT(p.id) AS total_productos
         FROM marcas m
-        LEFT JOIN productos p ON p.marca_id = m.id AND p.activo = 1
+        LEFT JOIN productos p ON p.marca_id = m.id AND p.estado != 'archivado'
         WHERE m.slug = ?
         GROUP BY m.id, m.nombre, m.slug, m.activo
         LIMIT 1

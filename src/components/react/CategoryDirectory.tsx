@@ -37,7 +37,7 @@ export default function CategoryDirectory() {
         <p>Inicio / Categorías / {currentCategory?.[1] || selected}</p>
         <h2>{currentCategory?.[1] || selected}</h2>
         <span>
-          Herramientas y productos para tu técnica. Revisa cada producto antes de agregarlo a tu pedido.
+          Herramientas y productos para tu técnica. Revisa cada producto antes de agregarlo a tu carrito.
         </span>
       </section>
 

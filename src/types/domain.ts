@@ -2,24 +2,43 @@ export interface ProductVariant {
   id?: number
   name: string
   sku?: string
-  priceAdjustment?: number
+  price?: number
   stock: boolean
 }
+
+export type ProductStatus = "borrador" | "publicado" | "archivado"
 
 export interface Product {
   id: number
   name: string
   brand: string
   model: string
+  sku?: string
   price: number
   oldPrice?: number
   image: string
+  images?: string[]
   category: string
+  categoryGroup?: string
   stock: boolean
   badge?: string
   variant?: string
   description?: string
+  technicalSpecs?: string
+  boxContents?: string
+  status?: ProductStatus
   variants?: ProductVariant[]
+}
+
+export interface CategoryItem {
+  id: number
+  parentId: number | null
+  parentName?: string
+  name: string
+  slug: string
+  description?: string
+  image?: string
+  order: number
 }
 
 export interface CartItem extends Product {
