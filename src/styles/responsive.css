@@ -367,8 +367,13 @@
   .table-labels span:first-child {
     display: block;
   }
-  .admin-head .button {
-    display: none;
+  .admin-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .courier-tabs__grid {
+    grid-template-columns: 1fr;
   }
 }
 

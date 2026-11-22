@@ -89,7 +89,12 @@ export default function OverviewTab({
               <span style={{ color: "var(--muted)", display: "block", fontSize: "10px" }}>
                 WHATSAPP OFICIAL DE PEDIDOS
               </span>
-              <strong>+51 {storeConfig.whatsapp_number}</strong>
+              <strong>
+                +{(() => {
+                  const digits = storeConfig.whatsapp_number.replace(/\D/g, "")
+                  return digits.startsWith("51") ? digits : `51${digits}`
+                })()}
+              </strong>
             </div>
             <div>
               <span style={{ color: "var(--muted)", display: "block", fontSize: "10px" }}>

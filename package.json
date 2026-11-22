@@ -1,5 +1,5 @@
 {
-  "name": "figma-make-app",
+  "name": "magik-barber-supply",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -7,8 +7,6 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "dev:vite": "vite",
-    "build:vite": "vite build",
     "typecheck": "tsc --noEmit",
     "format": "oxfmt"
   },
@@ -28,10 +26,8 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@vitejs/plugin-react": "^4.3.4",
     "oxfmt": "^0.2.0",
     "tailwindcss": "^4.0.0",
-    "typescript": "^5.7.0",
-    "vite": "^6.4.5"
+    "typescript": "^5.7.0"
   }
 }

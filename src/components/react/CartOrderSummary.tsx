@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useStore } from "@nanostores/react"
 import {
   $cart,
@@ -20,34 +21,37 @@ export default function CartOrderSummary({
   const items = useStore($cart)
   const subtotal = useStore($cartSubtotal)
   const customer = useStore($customer)
+  const [validationError, setValidationError] = useState<string | null>(null)
 
   const sendOrder = () => {
     if (!customer.name.trim()) {
-      window.alert("Ingresa tu nombre completo para coordinar el pedido.")
+      setValidationError("Ingresa tu nombre completo para coordinar el pedido.")
       return
     }
 
     if (customer.delivery === "Shalom") {
       if (!customer.dni?.trim()) {
-        window.alert("Ingresa tu DNI para la guía de remisión de Shalom.")
+        setValidationError("Ingresa tu DNI para la guía de remisión de Shalom.")
         return
       }
       if (!customer.city?.trim() && !customer.agency?.trim()) {
-        window.alert("Ingresa la ciudad o agencia Shalom de destino.")
+        setValidationError("Ingresa la ciudad o agencia Shalom de destino.")
         return
       }
     }
 
     if (customer.delivery === "Olva Courier") {
       if (!customer.dni?.trim()) {
-        window.alert("Ingresa tu DNI para la emisión de la guía de Olva Courier.")
+        setValidationError("Ingresa tu DNI para la emisión de la guía de Olva Courier.")
         return
       }
       if (!customer.address?.trim()) {
-        window.alert("Ingresa tu dirección exacta de entrega a domicilio.")
+        setValidationError("Ingresa tu dirección exacta de entrega a domicilio.")
         return
       }
     }
+
+    setValidationError(null)
 
     const whatsappUrl = buildWhatsAppUrl(
       items,
@@ -191,15 +195,7 @@ export default function CartOrderSummary({
                 required
               />
             </label>
-            <div style={{
-              background: "#fff9cb",
-              border: "1px solid #ead100",
-              borderRadius: "6px",
-              padding: "10px 12px",
-              fontSize: "11px",
-              color: "#6b5800",
-              marginBottom: "15px",
-            }}>
+            <div className="cart-delivery-note cart-delivery-note--shalom">
               <strong>📦 Shalom - Pago en destino:</strong> Cancelas el costo de encomienda directamente a Shalom al momento de retirar tu paquete con tu DNI.
             </div>
           </>
@@ -234,30 +230,14 @@ export default function CartOrderSummary({
                 required
               />
             </label>
-            <div style={{
-              background: "#e6f6ec",
-              border: "1px solid #a3e2bb",
-              borderRadius: "6px",
-              padding: "10px 12px",
-              fontSize: "11px",
-              color: "#0f5a2a",
-              marginBottom: "15px",
-            }}>
+            <div className="cart-delivery-note cart-delivery-note--olva">
               <strong>🚚 Olva Courier - Puerta a Puerta:</strong> El flete se cotiza según el peso de tus equipos antes de despachar.
             </div>
           </>
         )}
 
         {customer.delivery === "Recojo en tienda" && (
-          <div style={{
-            background: "#f0f0ed",
-            border: "1px solid #deded9",
-            borderRadius: "6px",
-            padding: "10px 12px",
-            fontSize: "11px",
-            color: "#555",
-            marginBottom: "15px",
-          }}>
+          <div className="cart-delivery-note cart-delivery-note--tacna">
             <strong>📍 Punto de entrega en Tacna:</strong> Coordinamos por WhatsApp la hora de retiro en nuestro espacio comercial sin costo adicional de flete.
           </div>
         )}
@@ -275,6 +255,12 @@ export default function CartOrderSummary({
           <span>Subtotal</span>
           <strong>S/{subtotal}</strong>
         </div>
+
+        {validationError && (
+          <div className="cart-validation-error" role="alert">
+            {validationError}
+          </div>
+        )}
 
         <button
           type="button"

@@ -43,13 +43,13 @@
   --text-body-hero: #bdbdbd;
 
   /* Tipografía */
-  --serif: "Inter:Bold", "Didot", "Playfair Display", Georgia, serif;
-  --sans: "Inter:Regular", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-regular: "Inter:Regular", Inter, -apple-system, sans-serif;
-  --font-medium: "Inter:Medium", Inter, -apple-system, sans-serif;
-  --font-semibold: "Inter:Semi Bold", Inter, -apple-system, sans-serif;
-  --font-bold: "Inter:Bold", Inter, -apple-system, sans-serif;
-  --font-extrabold: "Inter:Extra Bold", Inter, -apple-system, sans-serif;
+  --serif: "Inter", "Didot", "Playfair Display", Georgia, serif;
+  --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-regular: "Inter", -apple-system, sans-serif;
+  --font-medium: "Inter", -apple-system, sans-serif;
+  --font-semibold: "Inter", -apple-system, sans-serif;
+  --font-bold: "Inter", -apple-system, sans-serif;
+  --font-extrabold: "Inter", -apple-system, sans-serif;
 
   /* Bordes y Geometría */
   --radius: 12px;
