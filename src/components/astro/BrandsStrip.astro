@@ -1,11 +1,14 @@
 ---
-const brands = ["STYLECRAFT", "JRL", "VASSO", "MAGIK SELECT"]
+interface Props {
+  brands?: string[]
+}
+
+const { brands = ["STYLECRAFT", "JRL", "VASSO", "MAGIK SELECT"] } = Astro.props
 ---
 
 <section class="brands-strip shell">
   <p>MARCAS EN CATÁLOGO</p>
   {brands.map((brand) => (
-    <a href="/marcas">{brand}</a>
+    <a href={`/catalogo?marca=${encodeURIComponent(brand)}`}>{brand}</a>
   ))}
 </section>
-

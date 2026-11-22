@@ -108,7 +108,7 @@ function matrixToCsv(matrix: Array<Array<string | number | boolean | undefined>>
   return "\uFEFF" + lines.join("\r\n")
 }
 
-export function generarPlantillaExcel(): Uint8Array {
+export async function generarPlantillaExcel(): Promise<Blob> {
   return writeSpreadsheetMatrix("Catálogo Magik", [TEMPLATE_HEADERS, ...TEMPLATE_SAMPLE_ROWS], TEMPLATE_COL_WIDTHS)
 }
 
@@ -116,7 +116,7 @@ export function generarPlantillaCsv(): string {
   return matrixToCsv([TEMPLATE_HEADERS, ...TEMPLATE_SAMPLE_ROWS])
 }
 
-export function exportarCatalogoExcel(productos: Product[]): Uint8Array {
+export async function exportarCatalogoExcel(productos: Product[]): Promise<Blob> {
   const rows: Array<Array<string | number>> = productos.map((p) => [
     p.id,
     p.name,

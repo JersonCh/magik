@@ -5,6 +5,7 @@ import Footer from "../components/astro/Footer.astro"
 import FloatingWhatsApp from "../components/astro/FloatingWhatsApp.astro"
 import CartDrawer from "../components/react/CartDrawer"
 import ToastNotification from "../components/react/ToastNotification"
+import { getAllStoreConfig, getProducts } from "../lib/db"
 
 interface Props {
   title?: string
@@ -17,6 +18,11 @@ const {
   description = "Equipos profesionales para barbería, peluquería y cuidado personal en Tacna, Perú. Stylecraft, JRL, Vasso y más.",
   currentPath = Astro.url.pathname,
 } = Astro.props
+
+const [storeConfig, searchProducts] = await Promise.all([
+  getAllStoreConfig(Astro.locals),
+  getProducts(Astro.locals),
+])
 ---
 
 <!doctype html>
@@ -31,13 +37,16 @@ const {
   </head>
   <body>
     <div class="app">
-      <Header currentPath={currentPath} />
+      <Header
+        currentPath={currentPath}
+        storeConfig={storeConfig}
+        searchProducts={searchProducts}
+      />
       <slot />
-      <Footer />
-      <FloatingWhatsApp />
+      <Footer storeConfig={storeConfig} />
+      <FloatingWhatsApp whatsappNumber={storeConfig.whatsapp_number} />
       <CartDrawer client:load />
       <ToastNotification client:load />
     </div>
   </body>
 </html>
-

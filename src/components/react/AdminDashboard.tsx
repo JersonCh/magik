@@ -7,7 +7,7 @@ import {
   type Product,
   type StoreConfigMap,
 } from "@/types/domain"
-import { downloadCsv, downloadExcel } from "@/lib/download"
+import { downloadBlob, downloadCsv } from "@/lib/download"
 import { AdminApiError, adminApi } from "@/services/adminApi"
 import Icon from "./Icon"
 import AdminLogin from "./admin/AdminLogin"
@@ -245,7 +245,8 @@ export default function AdminDashboard() {
     try {
       const { exportarCatalogoExcel } = await import("@/lib/import/catalogExporter")
       const dateStr = new Date().toISOString().split("T")[0]
-      downloadExcel(exportarCatalogoExcel(productList), `catalogo_magik_${dateStr}.xlsx`)
+      const blob = await exportarCatalogoExcel(productList)
+      downloadBlob(blob, `catalogo_magik_${dateStr}.xlsx`)
       triggerToast("Catálogo exportado exitosamente a Excel (.xlsx)")
     } catch {
       triggerToast("Error al exportar archivo Excel")

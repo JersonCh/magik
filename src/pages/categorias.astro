@@ -1,6 +1,15 @@
 ---
 import Layout from "../layouts/Layout.astro"
 import CategoryDirectory from "../components/react/CategoryDirectory"
+import { getCategories, getProducts } from "../lib/db"
+
+export const prerender = false
+
+const initialCategory = Astro.url.searchParams.get("categoria") || undefined
+const [products, categories] = await Promise.all([
+  getProducts(Astro.locals),
+  getCategories(Astro.locals),
+])
 ---
 
 <Layout title="Categorías | Magik Barber Supply Tacna" currentPath="/categorias">
@@ -10,12 +19,16 @@ import CategoryDirectory from "../components/react/CategoryDirectory"
     </p>
 
     <div class="page-intro">
-      <p>SIETE FAMILIAS</p>
+      <p>LÍNEAS DEL CATÁLOGO</p>
       <h1>Una categoría para cada técnica</h1>
       <span>Explora el catálogo por tipo de herramienta o producto.</span>
     </div>
 
-    <CategoryDirectory client:load />
+    <CategoryDirectory
+      client:load
+      products={products}
+      categories={categories}
+      initialCategory={initialCategory}
+    />
   </main>
 </Layout>
-

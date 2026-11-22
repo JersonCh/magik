@@ -1,10 +1,26 @@
 import { useState } from "react"
-import { products, brands } from "../../data/products"
-import AddToCartButton from "./AddToCartButton"
+import type { Product } from "@/types/domain"
+import ProductCard from "./ProductCard"
 
-export default function BrandDirectory() {
-  const [selected, setSelected] = useState("STYLECRAFT")
-  const brandProducts = products.filter((p) => p.brand === selected)
+interface BrandDirectoryProps {
+  products: Product[]
+  brands: string[]
+  initialBrand?: string
+}
+
+export default function BrandDirectory({
+  products,
+  brands,
+  initialBrand,
+}: BrandDirectoryProps) {
+  const defaultBrand =
+    (initialBrand && brands.find((b) => b.toUpperCase() === initialBrand.toUpperCase())) ||
+    brands[0] ||
+    "STYLECRAFT"
+  const [selected, setSelected] = useState(defaultBrand)
+  const brandProducts = products.filter(
+    (p) => p.brand.toUpperCase() === selected.toUpperCase()
+  )
 
   return (
     <div>
@@ -13,12 +29,12 @@ export default function BrandDirectory() {
           <button
             type="button"
             key={brand}
-            className={selected === brand ? "selected" : ""}
+            className={selected.toUpperCase() === brand.toUpperCase() ? "selected" : ""}
             onClick={() => setSelected(brand)}
           >
             {brand}
             <small>
-              {products.filter((p) => p.brand === brand).length} productos
+              {products.filter((p) => p.brand.toUpperCase() === brand.toUpperCase()).length} productos
             </small>
           </button>
         ))}
@@ -30,51 +46,17 @@ export default function BrandDirectory() {
         <span>Explora los productos disponibles de esta marca.</span>
       </section>
 
-      <div className="product-grid catalog-grid">
-        {brandProducts.map((product) => (
-          <article
-            key={product.id}
-            className={`product-card ${!product.stock ? "product-card--out" : ""}`}
-          >
-            <a
-              href={`/producto/${product.id}`}
-              className="product-image"
-              aria-label={`Ver detalle de ${product.name}`}
-            >
-              <img src={product.image} alt={product.name} />
-              {product.badge && <span className="badge">{product.badge}</span>}
-              {!product.stock && <span className="out-label">Agotado</span>}
-            </a>
-            <div className="product-copy">
-              <p className="eyebrow">
-                {product.brand} · {product.model}
-              </p>
-              <h3>{product.name}</h3>
-            </div>
-            <div className="price-row">
-              <strong>S/{product.price}</strong>
-              {product.oldPrice && (
-                <>
-                  <del>S/{product.oldPrice}</del>
-                  <span>
-                    -{Math.round((1 - product.price / product.oldPrice) * 100)}%
-                  </span>
-                </>
-              )}
-            </div>
-            <p className={product.stock ? "availability" : "availability unavailable"}>
-              {product.stock ? "Disponible" : "Agotado · Consulta disponibilidad"}
-            </p>
-            <div className="card-actions">
-              <a href={`/producto/${product.id}`} className="button button--outline">
-                Ver producto
-              </a>
-              <AddToCartButton product={product} />
-            </div>
-          </article>
-        ))}
-      </div>
+      {brandProducts.length > 0 ? (
+        <div className="product-grid catalog-grid">
+          {brandProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      ) : (
+        <div className="empty-inline">
+          Próximamente más productos de esta marca.
+        </div>
+      )}
     </div>
   )
 }
-

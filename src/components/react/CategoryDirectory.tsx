@@ -1,14 +1,33 @@
 import { useState } from "react"
-import { products, categories } from "../../data/products"
+import type { Product } from "@/types/domain"
 import Icon from "./Icon"
-import AddToCartButton from "./AddToCartButton"
+import ProductCard from "./ProductCard"
 
 const A = "/assets/"
 
-export default function CategoryDirectory() {
-  const [selected, setSelected] = useState("Cortadoras")
-  const categoryProducts = products.filter((p) => p.category === selected)
-  const currentCategory = categories.find((c) => c[0] === selected)
+interface CategoryDirectoryProps {
+  products: Product[]
+  categories: [string, string, string][]
+  initialCategory?: string
+}
+
+export default function CategoryDirectory({
+  products,
+  categories,
+  initialCategory,
+}: CategoryDirectoryProps) {
+  const defaultCat =
+    (initialCategory &&
+      categories.find((c) => c[0].toLowerCase() === initialCategory.toLowerCase())?.[0]) ||
+    categories[0]?.[0] ||
+    "Cortadoras"
+  const [selected, setSelected] = useState(defaultCat)
+  const categoryProducts = products.filter(
+    (p) => p.category.toLowerCase() === selected.toLowerCase()
+  )
+  const currentCategory = categories.find(
+    (c) => c[0].toLowerCase() === selected.toLowerCase()
+  )
 
   return (
     <div>
@@ -16,15 +35,15 @@ export default function CategoryDirectory() {
         {categories.map(([key, label, image]) => (
           <button
             type="button"
-            className={`category-card ${selected === key ? "selected" : ""}`}
+            className={`category-card ${selected.toLowerCase() === key.toLowerCase() ? "selected" : ""}`}
             key={key}
             onClick={() => setSelected(key)}
           >
             <span>
-              <img src={`${A}${image}`} alt={label} />
+              <img src={image.startsWith("/") ? image : `${A}${image}`} alt={label} />
             </span>
             <b>{label}</b>
-            {selected === key && (
+            {selected.toLowerCase() === key.toLowerCase() && (
               <small>
                 <Icon name="check" /> Seleccionada
               </small>
@@ -44,46 +63,7 @@ export default function CategoryDirectory() {
       <div className="product-grid catalog-grid">
         {categoryProducts.length > 0 ? (
           categoryProducts.map((product) => (
-            <article
-              key={product.id}
-              className={`product-card ${!product.stock ? "product-card--out" : ""}`}
-            >
-              <a
-                href={`/producto/${product.id}`}
-                className="product-image"
-                aria-label={`Ver detalle de ${product.name}`}
-              >
-                <img src={product.image} alt={product.name} />
-                {product.badge && <span className="badge">{product.badge}</span>}
-                {!product.stock && <span className="out-label">Agotado</span>}
-              </a>
-              <div className="product-copy">
-                <p className="eyebrow">
-                  {product.brand} · {product.model}
-                </p>
-                <h3>{product.name}</h3>
-              </div>
-              <div className="price-row">
-                <strong>S/{product.price}</strong>
-                {product.oldPrice && (
-                  <>
-                    <del>S/{product.oldPrice}</del>
-                    <span>
-                      -{Math.round((1 - product.price / product.oldPrice) * 100)}%
-                    </span>
-                  </>
-                )}
-              </div>
-              <p className={product.stock ? "availability" : "availability unavailable"}>
-                {product.stock ? "Disponible" : "Agotado · Consulta disponibilidad"}
-              </p>
-              <div className="card-actions">
-                <a href={`/producto/${product.id}`} className="button button--outline">
-                  Ver producto
-                </a>
-                <AddToCartButton product={product} />
-              </div>
-            </article>
+            <ProductCard key={product.id} product={product} />
           ))
         ) : (
           <div className="empty-inline">
@@ -94,4 +74,3 @@ export default function CategoryDirectory() {
     </div>
   )
 }
-

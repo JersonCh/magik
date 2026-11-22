@@ -1,5 +1,13 @@
 ---
-import { WHATSAPP_NUMBER } from "../../data/products"
+import { getDefaultStoreConfig, type StoreConfigMap } from "@/types/domain"
+import { normalizePeruPhone } from "../../lib/whatsapp"
+
+interface Props {
+  storeConfig?: StoreConfigMap
+}
+
+const { storeConfig = getDefaultStoreConfig() } = Astro.props
+const waPhone = normalizePeruPhone(storeConfig.whatsapp_number)
 ---
 
 <footer>
@@ -11,7 +19,7 @@ import { WHATSAPP_NUMBER } from "../../data/products"
         </span>
       </a>
       <p>Equipos para barbería, salón y cuidado personal.</p>
-      <b>Tacna, Perú</b>
+      <b>{storeConfig.store_address}</b>
     </div>
 
     <div>
@@ -32,10 +40,10 @@ import { WHATSAPP_NUMBER } from "../../data/products"
 
     <div>
       <h3>Atención</h3>
-      <p>Dirección, horario y redes:</p>
-      <b>Por configurar</b>
+      <p>{storeConfig.opening_hours}</p>
+      <b>+{waPhone}</b>
       <a
-        href={`https://wa.me/${WHATSAPP_NUMBER}`}
+        href={`https://wa.me/${waPhone}`}
         target="_blank"
         rel="noopener noreferrer"
         class="button button--whatsapp"
@@ -55,4 +63,3 @@ import { WHATSAPP_NUMBER } from "../../data/products"
     <a href="/admin">Administración</a>
   </div>
 </footer>
-

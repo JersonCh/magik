@@ -52,7 +52,7 @@ export default function ImportUploadStep({
           type="file"
           ref={fileInputRef}
           onChange={handleFileChange}
-          accept=".xlsx,.xls,.csv"
+          accept=".xlsx,.csv"
           className="csv-hidden-input"
         />
         <div className="csv-dropzone-icon">
@@ -62,7 +62,7 @@ export default function ImportUploadStep({
           Arrastra tu archivo Excel (.xlsx) o CSV (.csv) aquí o haz clic para seleccionarlo
         </strong>
         <small className="csv-dropzone-hint">
-          Formatos compatibles: Microsoft Excel (.xlsx, .xls) y valores separados por comas (.csv)
+          Formatos compatibles: Microsoft Excel (.xlsx) y valores separados por comas (.csv)
         </small>
       </div>
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import type { BrandWithCount, Product, ResultadoImportacionCsv } from "@/types/domain"
-import { downloadCsv, downloadExcel } from "@/lib/download"
+import { downloadBlob, downloadCsv } from "@/lib/download"
 import { generarPlantillaCsv, generarPlantillaExcel } from "@/lib/import/catalogExporter"
 import {
   procesarBufferExcel,
@@ -69,11 +69,16 @@ export default function CsvImportModal({
 
   const procesarArchivo = (file: File) => {
     const ext = file.name.toLowerCase()
-    const esExcel = ext.endsWith(".xlsx") || ext.endsWith(".xls")
+    const esExcel = ext.endsWith(".xlsx")
     const esCsv = ext.endsWith(".csv")
 
+    if (ext.endsWith(".xls")) {
+      setErrorGlobal("El formato antiguo .xls no está soportado; guarda el archivo como Excel (.xlsx) o CSV (.csv).")
+      return
+    }
+
     if (!esExcel && !esCsv) {
-      setErrorGlobal("Por favor selecciona un archivo Excel (.xlsx, .xls) o CSV (.csv) válido.")
+      setErrorGlobal("Por favor selecciona un archivo Excel (.xlsx) o CSV (.csv) válido.")
       return
     }
 
@@ -83,10 +88,10 @@ export default function CsvImportModal({
     setTipoArchivo(esExcel ? "excel" : "csv")
 
     const reader = new FileReader()
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const result = esExcel
-          ? procesarBufferExcel(e.target?.result as ArrayBuffer, productos, marcas)
+          ? await procesarBufferExcel(e.target?.result as ArrayBuffer, productos, marcas)
           : procesarContenidoCsv((e.target?.result as string) || "", productos, marcas)
 
         if (result.filas.length === 0) {
@@ -179,9 +184,9 @@ export default function CsvImportModal({
         {paso === 1 && (
           <ImportUploadStep
             onFileSelected={procesarArchivo}
-            onDownloadExcel={() =>
-              downloadExcel(generarPlantillaExcel(), "plantilla_catalogo_magik.xlsx")
-            }
+            onDownloadExcel={async () => {
+              downloadBlob(await generarPlantillaExcel(), "plantilla_catalogo_magik.xlsx")
+            }}
             onDownloadCsv={() =>
               downloadCsv(generarPlantillaCsv(), "plantilla_catalogo_magik.csv")
             }

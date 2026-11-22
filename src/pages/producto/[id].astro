@@ -3,7 +3,8 @@ import Layout from "../../layouts/Layout.astro"
 import ProductCard from "../../components/astro/ProductCard.astro"
 import ProductGallery from "../../components/react/ProductGallery"
 import ProductDetailInteractive from "../../components/react/ProductDetailInteractive"
-import { getProductById, getRelatedProducts } from "../../lib/db"
+import { getProductById, getRelatedProducts, getStoreConfig } from "../../lib/db"
+import { DEFAULT_WHATSAPP_NUMBER } from "@/types/domain"
 
 export const prerender = false
 
@@ -20,7 +21,10 @@ if (!product || product.status === "borrador" || product.status === "archivado")
   return Astro.redirect("/catalogo")
 }
 
-const relatedProducts = await getRelatedProducts(product.id, Astro.locals, 3)
+const [relatedProducts, whatsappNumber] = await Promise.all([
+  getRelatedProducts(product.id, Astro.locals, 3),
+  getStoreConfig("whatsapp_number", DEFAULT_WHATSAPP_NUMBER, Astro.locals),
+])
 
 const galleryImages =
   product.images && product.images.length > 0 ? product.images : [product.image]
@@ -75,7 +79,11 @@ const eyebrowText = product.model ? `${product.brand} · ${product.model}` : pro
             "Producto para uso profesional o personal. Las características y disponibilidad final se confirman por WhatsApp."}
         </p>
 
-        <ProductDetailInteractive product={product} client:load />
+        <ProductDetailInteractive
+          product={product}
+          whatsappNumber={whatsappNumber}
+          client:load
+        />
       </section>
     </div>
 

@@ -1,5 +1,5 @@
 ---
-import type { Product } from "../../data/products"
+import type { Product } from "@/types/domain"
 import AddToCartButton from "../react/AddToCartButton"
 
 interface Props {
@@ -7,6 +7,7 @@ interface Props {
 }
 
 const { product } = Astro.props
+const eyebrowText = product.model ? `${product.brand} · ${product.model}` : product.brand
 ---
 
 <article class={`product-card ${!product.stock ? "product-card--out" : ""}`}>
@@ -21,9 +22,7 @@ const { product } = Astro.props
   </a>
 
   <div class="product-copy">
-    <p class="eyebrow">
-      {product.brand} · {product.model}
-    </p>
+    <p class="eyebrow">{eyebrowText}</p>
     <h3>{product.name}</h3>
   </div>
 

@@ -2,6 +2,12 @@
 import Layout from "../layouts/Layout.astro"
 import CartOrderSummary from "../components/react/CartOrderSummary"
 import ShippingCourierTabs from "../components/react/ShippingCourierTabs"
+import { getStoreConfig } from "../lib/db"
+import { DEFAULT_WHATSAPP_NUMBER } from "@/types/domain"
+
+export const prerender = false
+
+const whatsappNumber = await getStoreConfig("whatsapp_number", DEFAULT_WHATSAPP_NUMBER, Astro.locals)
 ---
 
 <Layout title="Mi Carrito | Magik Barber Supply Tacna" currentPath="/carrito">
@@ -18,7 +24,7 @@ import ShippingCourierTabs from "../components/react/ShippingCourierTabs"
       </span>
     </div>
 
-    <CartOrderSummary client:load />
+    <CartOrderSummary client:load whatsappNumber={whatsappNumber} />
 
     <!-- Guía logística y operadores de envío Perú -->
     <ShippingCourierTabs client:visible />

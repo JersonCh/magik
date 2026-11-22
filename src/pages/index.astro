@@ -7,17 +7,21 @@ import ProductCard from "../components/astro/ProductCard.astro"
 import PromoStrip from "../components/astro/PromoStrip.astro"
 import HowToBuy from "../components/astro/HowToBuy.astro"
 import BrandsStrip from "../components/astro/BrandsStrip.astro"
-import { getProducts, getCategories } from "../lib/db"
+import { getAllStoreConfig, getBrands, getCategories, getProducts } from "../lib/db"
 
-const products = await getProducts(Astro.locals)
-const categories = await getCategories(Astro.locals)
+const [products, categories, brands, storeConfig] = await Promise.all([
+  getProducts(Astro.locals),
+  getCategories(Astro.locals),
+  getBrands(Astro.locals),
+  getAllStoreConfig(Astro.locals),
+])
 
 const featuredProducts = products.slice(0, 4)
 const newArrivals = products.slice(4, 8)
 ---
 
 <Layout title="Magik Barber Supply | Equipos de Barbería en Tacna">
-  <Hero />
+  <Hero whatsappNumber={storeConfig.whatsapp_number} />
   <TrustStrip />
 
   <main>
@@ -90,6 +94,6 @@ const newArrivals = products.slice(4, 8)
     <HowToBuy />
 
     <!-- Marcas en catálogo -->
-    <BrandsStrip />
+    <BrandsStrip brands={brands} />
   </main>
 </Layout>

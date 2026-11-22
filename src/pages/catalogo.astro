@@ -1,10 +1,19 @@
 ---
 import Layout from "../layouts/Layout.astro"
 import CatalogFilters from "../components/react/CatalogFilters"
+import { getBrands, getCategoryTree, getProducts } from "../lib/db"
+
+export const prerender = false
 
 const offersOnly = Astro.url.searchParams.get("ofertas") === "true"
 const initialCat = Astro.url.searchParams.get("categoria") || "Todas las categorías"
 const initialBrand = Astro.url.searchParams.get("marca") || "Todas las marcas"
+
+const [products, categories, brands] = await Promise.all([
+  getProducts(Astro.locals),
+  getCategoryTree(Astro.locals),
+  getBrands(Astro.locals),
+])
 ---
 
 <Layout title="Catálogo | Magik Barber Supply Tacna" currentPath="/catalogo">
@@ -23,10 +32,12 @@ const initialBrand = Astro.url.searchParams.get("marca") || "Todas las marcas"
 
     <CatalogFilters
       client:load
+      products={products}
+      categories={categories}
+      brands={brands}
       initialCategory={initialCat}
       initialBrand={initialBrand}
       onlyOffers={offersOnly}
     />
   </main>
 </Layout>
-

@@ -1,5 +1,13 @@
 ---
-import { WHATSAPP_NUMBER } from "../../data/products"
+import { DEFAULT_WHATSAPP_NUMBER } from "@/types/domain"
+import { normalizePeruPhone } from "../../lib/whatsapp"
+
+interface Props {
+  whatsappNumber?: string
+}
+
+const { whatsappNumber = DEFAULT_WHATSAPP_NUMBER } = Astro.props
+const waPhone = normalizePeruPhone(whatsappNumber)
 ---
 
 <section class="hero">
@@ -20,7 +28,7 @@ import { WHATSAPP_NUMBER } from "../../data/products"
           </svg>
         </a>
         <a
-          href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hola, quisiera información sobre el catálogo de Magik Barber Supply.")}`}
+          href={`https://wa.me/${waPhone}?text=${encodeURIComponent("Hola, quisiera información sobre el catálogo de Magik Barber Supply.")}`}
           target="_blank"
           rel="noopener noreferrer"
           class="button button--outline"
@@ -53,4 +61,3 @@ import { WHATSAPP_NUMBER } from "../../data/products"
     </div>
   </div>
 </section>
-

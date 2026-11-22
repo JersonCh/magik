@@ -1,8 +1,12 @@
 import { useState, useRef, useEffect } from "react"
-import { products } from "../../data/products"
+import type { Product } from "@/types/domain"
 import Icon from "./Icon"
 
-export default function HeaderSearch() {
+interface HeaderSearchProps {
+  products: Product[]
+}
+
+export default function HeaderSearch({ products }: HeaderSearchProps) {
   const [search, setSearch] = useState("")
   const [showSuggestions, setShowSuggestions] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -10,7 +14,7 @@ export default function HeaderSearch() {
   const matches = search.trim()
     ? products
         .filter((p) =>
-          `${p.name} ${p.model} ${p.brand}`
+          `${p.name} ${p.model || ""} ${p.brand} ${p.category}`
             .toLowerCase()
             .includes(search.toLowerCase())
         )
@@ -53,7 +57,7 @@ export default function HeaderSearch() {
               >
                 {item.name}
                 <span>
-                  {item.brand} · {item.model}
+                  {item.brand}{item.model ? ` · ${item.model}` : ""}
                 </span>
               </a>
             ))
@@ -67,4 +71,3 @@ export default function HeaderSearch() {
     </div>
   )
 }
-

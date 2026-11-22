@@ -1,12 +1,19 @@
 ---
 import HeaderSearch from "../react/HeaderSearch"
 import CartTrigger from "../react/CartTrigger"
+import { getDefaultStoreConfig, type Product, type StoreConfigMap } from "@/types/domain"
 
 interface Props {
   currentPath?: string
+  storeConfig?: StoreConfigMap
+  searchProducts?: Product[]
 }
 
-const { currentPath = "/" } = Astro.props
+const {
+  currentPath = "/",
+  storeConfig = getDefaultStoreConfig(),
+  searchProducts = [],
+} = Astro.props
 
 const navLinks = [
   { href: "/", label: "Inicio" },
@@ -20,7 +27,7 @@ const navLinks = [
 <header class="site-header">
   <div class="announcement">
     <span>TACNA, PERÚ</span>
-    <span>Equipos para barbería, salón y cuidado personal</span>
+    <span>{storeConfig.announcement_bar}</span>
     <span>Atención por WhatsApp</span>
   </div>
 
@@ -31,7 +38,7 @@ const navLinks = [
       </span>
     </a>
 
-    <HeaderSearch client:load />
+    <HeaderSearch client:load products={searchProducts} />
 
     <CartTrigger client:load />
 

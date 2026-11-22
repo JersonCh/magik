@@ -1,16 +1,16 @@
-import * as XLSX from "xlsx"
+import readXlsxFile from "read-excel-file/browser"
+import writeXlsxFile, { type SheetData } from "write-excel-file/browser"
 
 /**
- * Adaptador aislado para lectura y escritura de hojas de cálculo Excel (.xlsx / .xls).
+ * Adaptador aislado para lectura y escritura de hojas de cálculo Excel (.xlsx).
  */
-export function readSpreadsheetBuffer(buffer: ArrayBuffer): string[][] {
-  const data = new Uint8Array(buffer)
-  const wb = XLSX.read(data, { type: "array" })
-  if (!wb.SheetNames.length) return []
+export async function readSpreadsheetBuffer(buffer: ArrayBuffer): Promise<string[][]> {
+  const sheets = await readXlsxFile(buffer)
+  if (!sheets || sheets.length === 0) return []
 
   const preferredSheet =
-    wb.SheetNames.find((name) => {
-      const lower = name.toLowerCase()
+    sheets.find((s) => {
+      const lower = s.sheet.toLowerCase()
       return (
         (lower.includes("producto") ||
           lower.includes("catalogo") ||
@@ -19,29 +19,29 @@ export function readSpreadsheetBuffer(buffer: ArrayBuffer): string[][] {
         !lower.includes("guia") &&
         !lower.includes("instruccion")
       )
-    }) || wb.SheetNames[0]
+    }) || sheets[0]
 
-  const ws = wb.Sheets[preferredSheet]
-  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" }) as unknown[][]
-
-  return rows.map((row) =>
+  return (preferredSheet.data || []).map((row) =>
     Array.isArray(row)
       ? row.map((cell) => (cell !== undefined && cell !== null ? String(cell).trim() : ""))
       : []
   )
 }
 
-export function writeSpreadsheetMatrix(
+export async function writeSpreadsheetMatrix(
   sheetName: string,
   matrix: Array<Array<string | number>>,
   colWidths?: number[]
-): Uint8Array {
-  const ws = XLSX.utils.aoa_to_sheet(matrix)
-  if (colWidths && colWidths.length > 0) {
-    ws["!cols"] = colWidths.map((wch) => ({ wch }))
-  }
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, sheetName)
-  const buffer = XLSX.write(wb, { bookType: "xlsx", type: "array" })
-  return new Uint8Array(buffer)
+): Promise<Blob> {
+  const sheetData: SheetData = matrix.map((row, rowIdx) =>
+    row.map((cell) => ({
+      value: cell === "" ? undefined : cell,
+      ...(rowIdx === 0 ? { fontWeight: "bold" as const } : {}),
+    }))
+  )
+
+  return writeXlsxFile(sheetData, {
+    sheet: sheetName,
+    columns: colWidths?.map((width) => ({ width })),
+  }).toBlob()
 }

@@ -6,10 +6,17 @@ import {
   updateQuantity,
   removeFromCart,
 } from "../../stores/cart"
+import { DEFAULT_WHATSAPP_NUMBER } from "@/types/domain"
 import { buildWhatsAppUrl } from "../../lib/whatsapp"
 import Icon from "./Icon"
 
-export default function CartOrderSummary() {
+interface CartOrderSummaryProps {
+  whatsappNumber?: string
+}
+
+export default function CartOrderSummary({
+  whatsappNumber = DEFAULT_WHATSAPP_NUMBER,
+}: CartOrderSummaryProps) {
   const items = useStore($cart)
   const subtotal = useStore($cartSubtotal)
   const customer = useStore($customer)
@@ -42,16 +49,21 @@ export default function CartOrderSummary() {
       }
     }
 
-    const whatsappUrl = buildWhatsAppUrl(items, subtotal, {
-      name: customer.name,
-      phone: customer.phone,
-      dni: customer.dni,
-      delivery: customer.delivery,
-      city: customer.city,
-      agency: customer.agency,
-      address: customer.address,
-      note: customer.note,
-    })
+    const whatsappUrl = buildWhatsAppUrl(
+      items,
+      subtotal,
+      {
+        name: customer.name,
+        phone: customer.phone,
+        dni: customer.dni,
+        delivery: customer.delivery,
+        city: customer.city,
+        agency: customer.agency,
+        address: customer.address,
+        note: customer.note,
+      },
+      whatsappNumber
+    )
 
     window.open(whatsappUrl, "_blank")
   }

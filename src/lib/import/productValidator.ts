@@ -230,12 +230,13 @@ export function procesarMatrizFilas(
   return { filas, resumen }
 }
 
-export function procesarBufferExcel(
+export async function procesarBufferExcel(
   buffer: ArrayBuffer,
   productosActuales: Product[],
   marcasActuales: BrandWithCount[]
 ) {
-  return procesarMatrizFilas(readSpreadsheetBuffer(buffer), productosActuales, marcasActuales)
+  const matriz = await readSpreadsheetBuffer(buffer)
+  return procesarMatrizFilas(matriz, productosActuales, marcasActuales)
 }
 
 export function procesarContenidoCsv(

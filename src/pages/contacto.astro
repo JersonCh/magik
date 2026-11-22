@@ -1,7 +1,13 @@
 ---
 import Layout from "../layouts/Layout.astro"
 import ShippingCourierTabs from "../components/react/ShippingCourierTabs"
-import { WHATSAPP_NUMBER } from "../data/products"
+import { getAllStoreConfig } from "../lib/db"
+import { normalizePeruPhone } from "../lib/whatsapp"
+
+export const prerender = false
+
+const storeConfig = await getAllStoreConfig(Astro.locals)
+const waPhone = normalizePeruPhone(storeConfig.whatsapp_number)
 ---
 
 <Layout title="Contacto y Envíos | Magik Barber Supply Tacna" currentPath="/contacto">
@@ -18,7 +24,7 @@ import { WHATSAPP_NUMBER } from "../data/products"
           Escríbenos para consultar productos, stock y modalidades de entrega a nivel nacional.
         </span>
         <a
-          href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hola, quisiera consultar con Magik Barber Supply sobre herramientas y envíos.")}`}
+          href={`https://wa.me/${waPhone}?text=${encodeURIComponent("Hola, quisiera consultar con Magik Barber Supply sobre herramientas y envíos.")}`}
           target="_blank"
           rel="noopener noreferrer"
           class="button button--whatsapp"
@@ -35,12 +41,12 @@ import { WHATSAPP_NUMBER } from "../data/products"
         <div>
           <span>UBICACIÓN</span>
           <b>Tacna, Perú</b>
-          <p>Atención y recojo coordinado</p>
+          <p>{storeConfig.store_address}</p>
         </div>
         <div>
           <span>HORARIO</span>
-          <b>Lunes a Sábado</b>
-          <p>Coordinación previa por WhatsApp</p>
+          <b>Atención comercial</b>
+          <p>{storeConfig.opening_hours}</p>
         </div>
         <div>
           <span>ENVÍOS NACIONALES</span>
@@ -50,7 +56,7 @@ import { WHATSAPP_NUMBER } from "../data/products"
         <div>
           <span>WHATSAPP DIRECTO</span>
           <b>Atención personalizada</b>
-          <p>+51 900 000 000</p>
+          <p>+{waPhone}</p>
         </div>
       </section>
     </div>
@@ -61,9 +67,7 @@ import { WHATSAPP_NUMBER } from "../data/products"
     <section class="map-placeholder">
       <span>TACNA, PERÚ</span>
       <h2>Ubicación comercial de Magik</h2>
-      <p>
-        Punto de entrega en la ciudad de Tacna y despacho nacional diario.
-      </p>
+      <p>{storeConfig.store_address}</p>
     </section>
   </main>
 </Layout>

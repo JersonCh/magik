@@ -1,6 +1,15 @@
 ---
 import Layout from "../layouts/Layout.astro"
 import BrandDirectory from "../components/react/BrandDirectory"
+import { getBrands, getProducts } from "../lib/db"
+
+export const prerender = false
+
+const initialBrand = Astro.url.searchParams.get("marca") || undefined
+const [products, brands] = await Promise.all([
+  getProducts(Astro.locals),
+  getBrands(Astro.locals),
+])
 ---
 
 <Layout title="Marcas | Magik Barber Supply Tacna" currentPath="/marcas">
@@ -17,7 +26,11 @@ import BrandDirectory from "../components/react/BrandDirectory"
       </span>
     </div>
 
-    <BrandDirectory client:load />
+    <BrandDirectory
+      client:load
+      products={products}
+      brands={brands}
+      initialBrand={initialBrand}
+    />
   </main>
 </Layout>
-

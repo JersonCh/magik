@@ -1,43 +1,70 @@
-import { useState, useMemo } from "react"
-import { products, categories, type Product } from "../../data/products"
+import { useMemo, useState } from "react"
+import type { CategoryItem, Product } from "@/types/domain"
 import Icon from "./Icon"
-import AddToCartButton from "./AddToCartButton"
+import ProductCard from "./ProductCard"
+import CategoryOptions from "./admin/CategoryOptions"
 
 interface CatalogFiltersProps {
+  products: Product[]
+  categories: CategoryItem[]
+  brands: string[]
   initialCategory?: string
   initialBrand?: string
   onlyOffers?: boolean
 }
 
+type PriceRange = "all" | "under_100" | "100_500" | "over_500"
+
 export default function CatalogFilters({
+  products,
+  categories,
+  brands,
   initialCategory = "Todas las categorías",
   initialBrand = "Todas las marcas",
   onlyOffers = false,
 }: CatalogFiltersProps) {
   const [category, setCategory] = useState(initialCategory)
   const [brand, setBrand] = useState(initialBrand)
+  const [priceRange, setPriceRange] = useState<PriceRange>("all")
   const [availability, setAvailability] = useState("Disponibilidad: Todas")
   const [sort, setSort] = useState("Relevancia")
   const [mobileFilters, setMobileFilters] = useState(false)
 
   const filtered = useMemo(() => {
     let result = products.filter((p) => {
-      const matchCat = category === "Todas las categorías" || p.category === category
-      const matchBrand = brand === "Todas las marcas" || p.brand === brand
+      const matchCat =
+        category === "Todas las categorías" ||
+        p.category.toLowerCase() === category.toLowerCase()
+      const matchBrand =
+        brand === "Todas las marcas" ||
+        p.brand.toUpperCase() === brand.toUpperCase()
       const matchStock = availability === "Disponibilidad: Todas" || p.stock
-      const matchOffers = !onlyOffers || (p.badge === "Oferta" || (p.oldPrice !== undefined && p.oldPrice > p.price))
-      return matchCat && matchBrand && matchStock && matchOffers
+      const matchOffers =
+        !onlyOffers ||
+        p.badge === "Oferta" ||
+        (p.oldPrice !== undefined && p.oldPrice > p.price)
+      const matchPrice =
+        priceRange === "all"
+          ? true
+          : priceRange === "under_100"
+            ? p.price <= 100
+            : priceRange === "100_500"
+              ? p.price > 100 && p.price <= 500
+              : p.price > 500
+
+      return matchCat && matchBrand && matchStock && matchOffers && matchPrice
     })
 
     if (sort === "Menor precio") result = [...result].sort((a, b) => a.price - b.price)
     if (sort === "Mayor precio") result = [...result].sort((a, b) => b.price - a.price)
     if (sort === "Novedades") result = [...result].sort((a, b) => b.id - a.id)
     return result
-  }, [category, brand, availability, sort, onlyOffers])
+  }, [products, category, brand, priceRange, availability, sort, onlyOffers])
 
   const reset = () => {
     setCategory("Todas las categorías")
     setBrand("Todas las marcas")
+    setPriceRange("all")
     setAvailability("Disponibilidad: Todas")
     setSort("Relevancia")
   }
@@ -45,6 +72,7 @@ export default function CatalogFilters({
   const isFiltered =
     category !== "Todas las categorías" ||
     brand !== "Todas las marcas" ||
+    priceRange !== "all" ||
     availability !== "Disponibilidad: Todas"
 
   return (
@@ -60,29 +88,31 @@ export default function CatalogFilters({
       <div className={`filters ${mobileFilters ? "filters--open" : ""}`}>
         <label className="select-field">
           <select value={category} onChange={(e) => setCategory(e.target.value)}>
-            <option>Todas las categorías</option>
-            {categories.map((c) => (
-              <option key={c[0]} value={c[0]}>
-                {c[0]}
+            <option value="Todas las categorías">Todas las categorías</option>
+            <CategoryOptions categories={categories} />
+          </select>
+        </label>
+
+        <label className="select-field">
+          <select value={brand} onChange={(e) => setBrand(e.target.value)}>
+            <option value="Todas las marcas">Todas las marcas</option>
+            {brands.map((b) => (
+              <option key={b} value={b}>
+                {b}
               </option>
             ))}
           </select>
         </label>
 
         <label className="select-field">
-          <select value={brand} onChange={(e) => setBrand(e.target.value)}>
-            <option>Todas las marcas</option>
-            <option value="STYLECRAFT">STYLECRAFT</option>
-            <option value="JRL">JRL</option>
-            <option value="VASSO">VASSO</option>
-            <option value="MAGIK SELECT">MAGIK SELECT</option>
-            <option value="GENÉRICO">GENÉRICO</option>
-          </select>
-        </label>
-
-        <label className="select-field">
-          <select defaultValue="Precio: S/0 – S/1,000">
-            <option>Precio: S/0 – S/1,000</option>
+          <select
+            value={priceRange}
+            onChange={(e) => setPriceRange(e.target.value as PriceRange)}
+          >
+            <option value="all">Precio: Todos</option>
+            <option value="under_100">Hasta S/100</option>
+            <option value="100_500">S/100 – S/500</option>
+            <option value="over_500">Más de S/500</option>
           </select>
         </label>
 
@@ -106,8 +136,8 @@ export default function CatalogFilters({
                 {category !== "Todas las categorías"
                   ? category
                   : brand !== "Todas las marcas"
-                  ? brand
-                  : "Disponibles"}
+                    ? brand
+                    : "Filtros activos"}
               </span>
               <button type="button" onClick={reset}>
                 Limpiar filtros
@@ -129,46 +159,7 @@ export default function CatalogFilters({
       {filtered.length > 0 ? (
         <div className="product-grid catalog-grid">
           {filtered.map((product) => (
-            <article
-              key={product.id}
-              className={`product-card ${!product.stock ? "product-card--out" : ""}`}
-            >
-              <a
-                href={`/producto/${product.id}`}
-                className="product-image"
-                aria-label={`Ver detalle de ${product.name}`}
-              >
-                <img src={product.image} alt={product.name} />
-                {product.badge && <span className="badge">{product.badge}</span>}
-                {!product.stock && <span className="out-label">Agotado</span>}
-              </a>
-              <div className="product-copy">
-                <p className="eyebrow">
-                  {product.brand} · {product.model}
-                </p>
-                <h3>{product.name}</h3>
-              </div>
-              <div className="price-row">
-                <strong>S/{product.price}</strong>
-                {product.oldPrice && (
-                  <>
-                    <del>S/{product.oldPrice}</del>
-                    <span>
-                      -{Math.round((1 - product.price / product.oldPrice) * 100)}%
-                    </span>
-                  </>
-                )}
-              </div>
-              <p className={product.stock ? "availability" : "availability unavailable"}>
-                {product.stock ? "Disponible" : "Agotado · Consulta disponibilidad"}
-              </p>
-              <div className="card-actions">
-                <a href={`/producto/${product.id}`} className="button button--outline">
-                  Ver producto
-                </a>
-                <AddToCartButton product={product} />
-              </div>
-            </article>
+            <ProductCard key={product.id} product={product} />
           ))}
         </div>
       ) : (
@@ -186,4 +177,3 @@ export default function CatalogFilters({
     </div>
   )
 }
-
