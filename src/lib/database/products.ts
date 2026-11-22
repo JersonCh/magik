@@ -1,7 +1,6 @@
-import { products as fallbackProducts, categories as fallbackCategories } from "../../data/products"
 import type { CategoryItem, Product, ProductStatus } from "../../types/domain"
 import type { DbCategory, DbProduct, DbProductImage, DbVariant } from "../../types/database"
-import { getDb, mapDbProductToProduct, normalizeSlug } from "./client"
+import { getDb, mapDbProductToProduct } from "./client"
 import {
   ensureBrandId,
   ensureCategoryId,
@@ -9,22 +8,64 @@ import {
   toCentimos,
   toDbEtiqueta,
 } from "./helpers"
+import {
+  defaultMemoryRepository,
+  type ProductQueryOptions,
+  type SaveProductInput,
+} from "./memoryRepository"
+
+export type { ProductQueryOptions, SaveProductInput }
 
 /**
- * Obtiene todos los productos (desde D1 o fallback en memoria).
- * Por defecto devuelve solo productos publicados; el panel admin pasa includeDrafts: true.
+ * Obtiene productos desde D1 aplicando filtros SQL cuando se especifican
+ * (o desde el repositorio en memoria en desarrollo sin D1).
  */
 export async function getProducts(
   env?: unknown,
-  options: { includeDrafts?: boolean } = {}
+  options: ProductQueryOptions = {}
 ): Promise<Product[]> {
   const db = getDb(env)
-  if (!db) return fallbackProducts
+  if (!db) return defaultMemoryRepository.getProducts(options)
 
   const includeDrafts = Boolean(options.includeDrafts)
 
   try {
-    const whereClause = includeDrafts ? "p.estado != 'archivado'" : "p.estado = 'publicado'"
+    const conditions: string[] = [includeDrafts ? "p.estado != 'archivado'" : "p.estado = 'publicado'"]
+    const bindings: Array<string | number> = []
+
+    if (options.category && options.category !== "Todas las categorías") {
+      conditions.push("LOWER(c.nombre) = LOWER(?)")
+      bindings.push(options.category.trim())
+    }
+
+    if (options.brand && options.brand !== "Todas las marcas") {
+      conditions.push("LOWER(m.nombre) = LOWER(?)")
+      bindings.push(options.brand.trim())
+    }
+
+    if (options.search && options.search.trim().length > 0) {
+      const pattern = `%${options.search.trim().toLowerCase()}%`
+      conditions.push(
+        "(LOWER(p.nombre) LIKE ? OR LOWER(m.nombre) LIKE ? OR LOWER(COALESCE(p.modelo, '')) LIKE ? OR LOWER(COALESCE(p.sku, '')) LIKE ?)"
+      )
+      bindings.push(pattern, pattern, pattern, pattern)
+    }
+
+    if (options.stockOnly) {
+      conditions.push("p.stock = 1")
+    }
+
+    if (options.offersOnly) {
+      conditions.push(
+        "(p.etiqueta = 'oferta' OR (p.precio_anterior_centimos IS NOT NULL AND p.precio_anterior_centimos > p.precio_centimos))"
+      )
+    }
+
+    let orderBy = "p.id ASC"
+    if (options.sort === "Menor precio") orderBy = "p.precio_centimos ASC, p.id ASC"
+    else if (options.sort === "Mayor precio") orderBy = "p.precio_centimos DESC, p.id ASC"
+    else if (options.sort === "Novedades") orderBy = "p.id DESC"
+
     const query = `
       SELECT
         p.*,
@@ -35,10 +76,12 @@ export async function getProducts(
       JOIN marcas m ON p.marca_id = m.id
       JOIN categorias c ON p.categoria_id = c.id
       LEFT JOIN categorias cp ON c.parent_id = cp.id
-      WHERE ${whereClause}
-      ORDER BY p.id ASC
+      WHERE ${conditions.join(" AND ")}
+      ORDER BY ${orderBy}
     `
-    const { results } = await db.prepare(query).all<DbProduct>()
+
+    const stmt = bindings.length > 0 ? db.prepare(query).bind(...bindings) : db.prepare(query)
+    const { results } = await stmt.all<DbProduct>()
     if (!results || results.length === 0) return []
 
     const [{ results: allVariants }, { results: allImages }] = await Promise.all([
@@ -65,7 +108,7 @@ export async function getProducts(
     )
   } catch (error) {
     console.warn("[D1] Error al obtener productos, usando fallback:", error)
-    return fallbackProducts
+    return defaultMemoryRepository.getProducts(options)
   }
 }
 
@@ -78,9 +121,7 @@ export async function getProductById(
   options: { includeDrafts?: boolean } = {}
 ): Promise<Product | null> {
   const db = getDb(env)
-  if (!db) {
-    return fallbackProducts.find((p) => p.id === id) || null
-  }
+  if (!db) return defaultMemoryRepository.getProductById(id, options)
 
   try {
     const whereClause = options.includeDrafts
@@ -116,7 +157,7 @@ export async function getProductById(
     return mapDbProductToProduct(productRow, variants || [], images || [])
   } catch (error) {
     console.warn(`[D1] Error al obtener producto ${id}, usando fallback:`, error)
-    return fallbackProducts.find((p) => p.id === id) || null
+    return defaultMemoryRepository.getProductById(id, options)
   }
 }
 
@@ -125,9 +166,7 @@ export async function getProductById(
  */
 export async function getRelatedProducts(productId: number, env?: unknown, limit = 3): Promise<Product[]> {
   const db = getDb(env)
-  if (!db) {
-    return fallbackProducts.filter((p) => p.id !== productId).slice(0, limit)
-  }
+  if (!db) return defaultMemoryRepository.getRelatedProducts(productId, limit)
 
   try {
     const { results: manualRows } = await db
@@ -158,7 +197,7 @@ export async function getRelatedProducts(productId: number, env?: unknown, limit
 
     return picked.slice(0, limit)
   } catch {
-    return fallbackProducts.filter((p) => p.id !== productId).slice(0, limit)
+    return defaultMemoryRepository.getRelatedProducts(productId, limit)
   }
 }
 
@@ -167,7 +206,7 @@ export async function getRelatedProducts(productId: number, env?: unknown, limit
  */
 export async function getCategories(env?: unknown): Promise<[string, string, string][]> {
   const db = getDb(env)
-  if (!db) return fallbackCategories
+  if (!db) return defaultMemoryRepository.getCategories()
 
   try {
     const { results } = await db
@@ -175,11 +214,10 @@ export async function getCategories(env?: unknown): Promise<[string, string, str
       .all<DbCategory>()
 
     if (!results || results.length === 0) return []
-
     return results.map((c) => [c.nombre, c.descripcion || c.nombre, (c.imagen_key || "").replace("/assets/", "")])
   } catch (error) {
     console.warn("[D1] Error al obtener categorías, usando fallback:", error)
-    return fallbackCategories
+    return defaultMemoryRepository.getCategories()
   }
 }
 
@@ -188,18 +226,7 @@ export async function getCategories(env?: unknown): Promise<[string, string, str
  */
 export async function getCategoryTree(env?: unknown): Promise<CategoryItem[]> {
   const db = getDb(env)
-  if (!db) {
-    return fallbackCategories.map(([name, description, image], idx) => ({
-      id: idx + 1,
-      parentId: 1,
-      parentName: "Catálogo",
-      name,
-      slug: normalizeSlug(name),
-      description,
-      image: `/assets/${image}`,
-      order: idx + 1,
-    }))
-  }
+  if (!db) return defaultMemoryRepository.getCategoryTree()
 
   try {
     const query = `
@@ -239,11 +266,7 @@ export async function getCategoryTree(env?: unknown): Promise<CategoryItem[]> {
  */
 export async function updateProductStock(id: number, stock: boolean, env?: unknown): Promise<boolean> {
   const db = getDb(env)
-  if (!db) {
-    const item = fallbackProducts.find((p) => p.id === id)
-    if (item) item.stock = stock
-    return true
-  }
+  if (!db) return defaultMemoryRepository.updateProductStock(id, stock)
 
   try {
     await db
@@ -260,85 +283,16 @@ export async function updateProductStock(id: number, stock: boolean, env?: unkno
 /**
  * Guarda o actualiza un producto y su galería múltiple en Cloudflare D1
  */
-export async function saveProduct(
-  data: {
-    id?: number
-    name: string
-    brand: string
-    model?: string
-    sku?: string
-    category: string
-    price: number
-    oldPrice?: number
-    image?: string
-    images?: string[]
-    stock?: boolean
-    description?: string
-    technicalSpecs?: string
-    boxContents?: string
-    badge?: string
-    status?: ProductStatus
-  },
-  env?: unknown
-): Promise<Product | null> {
+export async function saveProduct(data: SaveProductInput, env?: unknown): Promise<Product | null> {
   const db = getDb(env)
+  if (!db) return defaultMemoryRepository.saveProduct(data)
+
   const rawImages = (data.images || [])
     .map((url) => url.trim())
     .filter(Boolean)
     .slice(0, 3)
   if (rawImages.length === 0) {
     rawImages.push(data.image?.trim() || "/assets/a0f2f.png")
-  }
-  const mainImage = rawImages[0]
-
-  // Fallback si no hay conexión a D1
-  if (!db) {
-    if (data.id) {
-      const index = fallbackProducts.findIndex((p) => p.id === data.id)
-      if (index > -1) {
-        fallbackProducts[index] = {
-          ...fallbackProducts[index],
-          name: data.name,
-          brand: data.brand,
-          model: data.model || "",
-          sku: data.sku,
-          category: data.category,
-          price: data.price,
-          oldPrice: data.oldPrice,
-          image: mainImage,
-          images: rawImages,
-          stock: data.stock !== undefined ? data.stock : fallbackProducts[index].stock,
-          badge: data.badge,
-          description: data.description,
-          technicalSpecs: data.technicalSpecs,
-          boxContents: data.boxContents,
-          status: data.status || "publicado",
-        }
-        return fallbackProducts[index]
-      }
-      return null
-    } else {
-      const newProduct: Product = {
-        id: Math.max(...fallbackProducts.map((p) => p.id), 0) + 1,
-        name: data.name,
-        brand: data.brand,
-        model: data.model || "",
-        sku: data.sku,
-        category: data.category,
-        price: data.price,
-        oldPrice: data.oldPrice,
-        image: mainImage,
-        images: rawImages,
-        stock: data.stock !== undefined ? data.stock : true,
-        badge: data.badge,
-        description: data.description,
-        technicalSpecs: data.technicalSpecs,
-        boxContents: data.boxContents,
-        status: data.status || "publicado",
-      }
-      fallbackProducts.push(newProduct)
-      return newProduct
-    }
   }
 
   try {
@@ -420,7 +374,6 @@ export async function saveProduct(
 
     if (!productId) return null
 
-    // Sincronizar galería de imágenes en imagenes_producto
     const imageStatements = [
       db.prepare("DELETE FROM imagenes_producto WHERE producto_id = ?").bind(productId),
       ...rawImages.map((imgUrl, idx) =>
@@ -441,18 +394,11 @@ export async function saveProduct(
 }
 
 /**
- * Elimina un producto (archivado lógico en D1 o eliminación en memoria)
+ * Elimina un producto (archivado lógico en D1 o en repositorio en memoria)
  */
 export async function deleteProduct(id: number, env?: unknown): Promise<boolean> {
   const db = getDb(env)
-  if (!db) {
-    const idx = fallbackProducts.findIndex((p) => p.id === id)
-    if (idx > -1) {
-      fallbackProducts.splice(idx, 1)
-      return true
-    }
-    return false
-  }
+  if (!db) return defaultMemoryRepository.deleteProduct(id)
 
   try {
     await db

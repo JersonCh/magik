@@ -7,19 +7,19 @@ import {
 } from "../../types/domain"
 import type { DbConfig } from "../../types/database"
 import { getDb } from "./client"
+import { defaultMemoryRepository } from "./memoryRepository"
 
 export type { StoreConfigKey, StoreConfigMap }
 export const defaultStoreConfig: Readonly<StoreConfigMap> = DEFAULT_STORE_CONFIG
 
 const ALLOWED_KEYS = new Set<string>(STORE_CONFIG_KEYS)
-const memoryStoreConfig: StoreConfigMap = getDefaultStoreConfig()
 
 /**
  * Obtiene toda la configuración de la tienda como un objeto clave-valor tipado
  */
 export async function getAllStoreConfig(env?: unknown): Promise<StoreConfigMap> {
   const db = getDb(env)
-  if (!db) return { ...memoryStoreConfig }
+  if (!db) return defaultMemoryRepository.getAllStoreConfig()
 
   try {
     const { results } = await db
@@ -35,7 +35,7 @@ export async function getAllStoreConfig(env?: unknown): Promise<StoreConfigMap> 
     return map
   } catch (error) {
     console.warn("[D1] Error al obtener configuraciones:", error)
-    return { ...memoryStoreConfig }
+    return defaultMemoryRepository.getAllStoreConfig()
   }
 }
 
@@ -53,24 +53,20 @@ export async function updateStoreConfig(
   if (entries.length === 0) return false
 
   const db = getDb(env)
-  if (!db) {
-    for (const [clave, valor] of entries) {
-      memoryStoreConfig[clave] = valor
-    }
-    return true
-  }
+  if (!db) return defaultMemoryRepository.updateStoreConfig(config)
 
   try {
-    for (const [clave, valor] of entries) {
-      await db
-        .prepare(`
-          INSERT INTO configuracion (clave, valor, updated_at)
-          VALUES (?, ?, CURRENT_TIMESTAMP)
-          ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor, updated_at = CURRENT_TIMESTAMP
-        `)
-        .bind(clave, valor)
-        .run()
-    }
+    await db.batch(
+      entries.map(([clave, valor]) =>
+        db
+          .prepare(`
+            INSERT INTO configuracion (clave, valor, updated_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor, updated_at = CURRENT_TIMESTAMP
+          `)
+          .bind(clave, valor)
+      )
+    )
     return true
   } catch (error) {
     console.error("[D1] Error al actualizar configuración:", error)
@@ -83,9 +79,7 @@ export async function updateStoreConfig(
  */
 export async function getStoreConfig(key: StoreConfigKey, defaultValue = "", env?: unknown): Promise<string> {
   const db = getDb(env)
-  if (!db) {
-    return memoryStoreConfig[key] || defaultValue
-  }
+  if (!db) return defaultMemoryRepository.getStoreConfig(key, defaultValue)
 
   try {
     const row = await db
@@ -94,6 +88,6 @@ export async function getStoreConfig(key: StoreConfigKey, defaultValue = "", env
       .first<DbConfig>()
     return row?.valor || DEFAULT_STORE_CONFIG[key] || defaultValue
   } catch {
-    return memoryStoreConfig[key] || defaultValue
+    return defaultMemoryRepository.getStoreConfig(key, defaultValue)
   }
 }

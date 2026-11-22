@@ -1,9 +1,9 @@
-import { brands as fallbackBrands, products as fallbackProducts } from "../../data/products"
 import type { D1Database, D1PreparedStatement } from "../../types/database"
 import type { ResultadoImportacionCsv } from "../../types/domain"
 import type { ValidatedImportRow } from "../validators/admin"
 import { getDb, normalizeSlug } from "./client"
 import { toCentimos, toDbEtiqueta } from "./helpers"
+import { defaultMemoryRepository } from "./memoryRepository"
 
 export type { ResultadoImportacionCsv }
 
@@ -18,8 +18,12 @@ async function runInBatches(db: D1Database, statements: D1PreparedStatement[]): 
   }
 }
 
-function allocateUniqueSlug(baseText: string, usedSlugs: Set<string>): string {
-  const baseSlug = normalizeSlug(baseText) || "producto"
+function allocateUniqueSlug(
+  baseText: string,
+  usedSlugs: Set<string>,
+  fallbackPrefix = "producto"
+): string {
+  const baseSlug = normalizeSlug(baseText) || fallbackPrefix
   let candidate = baseSlug
   let counter = 1
   while (usedSlugs.has(candidate)) {
@@ -28,76 +32,6 @@ function allocateUniqueSlug(baseText: string, usedSlugs: Set<string>): string {
   }
   usedSlugs.add(candidate)
   return candidate
-}
-
-function importInMemoryFallback(
-  filas: ValidatedImportRow[],
-  modoDuplicados: "omitir" | "actualizar"
-): ResultadoImportacionCsv {
-  let creados = 0
-  let actualizados = 0
-  let omitidos = 0
-
-  for (const f of filas) {
-    if (!f.esValido) {
-      omitidos++
-      continue
-    }
-
-    if (f.idProductoExistente) {
-      if (modoDuplicados === "omitir") {
-        omitidos++
-        continue
-      }
-      const idx = fallbackProducts.findIndex((p) => p.id === f.idProductoExistente)
-      if (idx > -1) {
-        fallbackProducts[idx] = {
-          ...fallbackProducts[idx],
-          name: f.nombre,
-          brand: f.marca,
-          model: f.modelo,
-          sku: f.sku || fallbackProducts[idx].sku,
-          category: f.categoria,
-          price: f.precio,
-          oldPrice: f.precioAnterior,
-          stock: f.stock,
-          badge: f.badge,
-          description: f.descripcion || fallbackProducts[idx].description,
-          technicalSpecs: f.caracteristicasTecnicas || fallbackProducts[idx].technicalSpecs,
-          boxContents: f.contenidoCaja || fallbackProducts[idx].boxContents,
-        }
-        actualizados++
-      } else {
-        omitidos++
-      }
-      continue
-    }
-
-    const maxId = Math.max(...fallbackProducts.map((p) => p.id), 0)
-    fallbackProducts.push({
-      id: maxId + 1,
-      name: f.nombre,
-      brand: f.marca,
-      model: f.modelo,
-      sku: f.sku,
-      category: f.categoria,
-      price: f.precio,
-      oldPrice: f.precioAnterior,
-      stock: f.stock,
-      badge: f.badge,
-      description: f.descripcion,
-      technicalSpecs: f.caracteristicasTecnicas,
-      boxContents: f.contenidoCaja,
-      image: f.imagen || "/assets/a0f2f.png",
-      images: [f.imagen || "/assets/a0f2f.png"],
-    })
-    if (!fallbackBrands.includes(f.marca)) {
-      fallbackBrands.push(f.marca)
-    }
-    creados++
-  }
-
-  return { creados, actualizados, omitidos, errores: [] }
 }
 
 /**
@@ -111,7 +45,7 @@ export async function importarProductosCsvEnDb(
 ): Promise<ResultadoImportacionCsv> {
   const db = getDb(env)
   if (!db) {
-    return importInMemoryFallback(filas, modoDuplicados)
+    return defaultMemoryRepository.importProducts(filas, modoDuplicados)
   }
 
   let creados = 0
@@ -121,19 +55,23 @@ export async function importarProductosCsvEnDb(
 
   // 1. Pre-cargar marcas, categorías y slugs existentes en 3 consultas globales
   const [{ results: brandRows }, { results: catRows }, { results: slugRows }] = await Promise.all([
-    db.prepare("SELECT id, nombre, activo FROM marcas").all<{ id: number; nombre: string; activo: number }>(),
-    db.prepare("SELECT id, nombre, activo FROM categorias").all<{ id: number; nombre: string; activo: number }>(),
+    db.prepare("SELECT id, nombre, slug, activo FROM marcas").all<{ id: number; nombre: string; slug: string; activo: number }>(),
+    db.prepare("SELECT id, nombre, slug, activo FROM categorias").all<{ id: number; nombre: string; slug: string; activo: number }>(),
     db.prepare("SELECT slug FROM productos").all<{ slug: string }>(),
   ])
 
   const brandMap = new Map<string, { id: number; activo: number }>()
+  const usedBrandSlugs = new Set<string>()
   for (const b of brandRows || []) {
     brandMap.set(b.nombre.trim().toUpperCase(), { id: b.id, activo: b.activo })
+    usedBrandSlugs.add(b.slug)
   }
 
   const catMap = new Map<string, { id: number; activo: number }>()
+  const usedCatSlugs = new Set<string>()
   for (const c of catRows || []) {
     catMap.set(c.nombre.trim().toUpperCase(), { id: c.id, activo: c.activo })
+    usedCatSlugs.add(c.slug)
   }
 
   const usedSlugs = new Set<string>((slugRows || []).map((s) => s.slug))
@@ -158,7 +96,7 @@ export async function importarProductosCsvEnDb(
     } else if (!missingBrands.has(bKey)) {
       missingBrands.set(bKey, {
         nombre: f.marca.trim(),
-        slug: normalizeSlug(f.marca) || `marca-${Date.now()}-${missingBrands.size}`,
+        slug: allocateUniqueSlug(f.marca, usedBrandSlugs, "marca"),
       })
     }
 
@@ -172,7 +110,7 @@ export async function importarProductosCsvEnDb(
     } else if (!missingCats.has(cKey)) {
       missingCats.set(cKey, {
         nombre: f.categoria.trim(),
-        slug: normalizeSlug(f.categoria) || `cat-${Date.now()}-${missingCats.size}`,
+        slug: allocateUniqueSlug(f.categoria, usedCatSlugs, "categoria"),
       })
     }
   }

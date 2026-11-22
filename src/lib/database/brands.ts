@@ -1,26 +1,41 @@
-import { products as fallbackProducts, brands as fallbackBrands } from "../../data/products"
 import type { BrandWithCount } from "../../types/domain"
 import type { DbBrand } from "../../types/database"
-import { getDb, normalizeSlug } from "./client"
+import { getDb } from "./client"
+import { generateUniqueSlug } from "./helpers"
+import { defaultMemoryRepository } from "./memoryRepository"
 
 export type { BrandWithCount }
 
-function getFallbackBrandsWithCounts(): BrandWithCount[] {
-  return fallbackBrands.map((b, idx) => ({
-    id: idx + 1,
-    nombre: b,
-    slug: normalizeSlug(b),
-    totalProductos: fallbackProducts.filter((p) => p.brand.toUpperCase() === b.toUpperCase()).length,
-    activo: true,
-  }))
+const BRAND_WITH_COUNT_SELECT = `
+  SELECT m.id, m.nombre, m.slug, m.activo, COUNT(p.id) AS total_productos
+  FROM marcas m
+  LEFT JOIN productos p ON p.marca_id = m.id AND p.estado != 'archivado'
+`
+
+interface DbBrandCountRow {
+  id: number
+  nombre: string
+  slug: string
+  activo: number
+  total_productos: number
+}
+
+function mapBrandRow(r: DbBrandCountRow): BrandWithCount {
+  return {
+    id: r.id,
+    nombre: r.nombre,
+    slug: r.slug,
+    totalProductos: Number(r.total_productos) || 0,
+    activo: Boolean(r.activo),
+  }
 }
 
 /**
- * Obtiene la lista simple de marcas
+ * Obtiene la lista simple de marcas activas
  */
 export async function getBrands(env?: unknown): Promise<string[]> {
   const db = getDb(env)
-  if (!db) return fallbackBrands
+  if (!db) return defaultMemoryRepository.getBrands()
 
   try {
     const { results } = await db
@@ -31,128 +46,95 @@ export async function getBrands(env?: unknown): Promise<string[]> {
     return results.map((m) => m.nombre)
   } catch (error) {
     console.warn("[D1] Error al obtener marcas, usando fallback:", error)
-    return fallbackBrands
+    return defaultMemoryRepository.getBrands()
   }
 }
 
 /**
- * Obtiene las marcas con el total de productos asociados (no archivados)
+ * Obtiene las marcas activas con el total de productos asociados (no archivados)
  */
 export async function getBrandsWithCounts(env?: unknown): Promise<BrandWithCount[]> {
   const db = getDb(env)
-  if (!db) {
-    return getFallbackBrandsWithCounts()
-  }
+  if (!db) return defaultMemoryRepository.getBrandsWithCounts()
 
   try {
     const query = `
-      SELECT m.id, m.nombre, m.slug, m.activo, COUNT(p.id) AS total_productos
-      FROM marcas m
-      LEFT JOIN productos p ON p.marca_id = m.id AND p.estado != 'archivado'
+      ${BRAND_WITH_COUNT_SELECT}
       WHERE m.activo = 1
       GROUP BY m.id, m.nombre, m.slug, m.activo
       ORDER BY m.nombre ASC
     `
-    const { results } = await db.prepare(query).all<{
-      id: number
-      nombre: string
-      slug: string
-      activo: number
-      total_productos: number
-    }>()
-
-    if (!results || results.length === 0) {
-      return []
-    }
-
-    return results.map((r) => ({
-      id: r.id,
-      nombre: r.nombre,
-      slug: r.slug,
-      totalProductos: Number(r.total_productos) || 0,
-      activo: Boolean(r.activo),
-    }))
+    const { results } = await db.prepare(query).all<DbBrandCountRow>()
+    if (!results || results.length === 0) return []
+    return results.map(mapBrandRow)
   } catch (error) {
     console.warn("[D1] Error al obtener marcas con conteo:", error)
-    return getFallbackBrandsWithCounts()
+    return defaultMemoryRepository.getBrandsWithCounts()
   }
 }
 
 /**
- * Guarda o actualiza una marca (reactiva si existía como soft-deleted)
+ * Guarda o actualiza una marca (evita colisiones de slug y reactiva soft-deleted)
  */
 export async function saveBrand(
   data: { id?: number; nombre: string },
   env?: unknown
 ): Promise<BrandWithCount | null> {
   const db = getDb(env)
-  const slug = normalizeSlug(data.nombre)
+  if (!db) return defaultMemoryRepository.saveBrand(data)
 
-  if (!db) {
-    if (!fallbackBrands.some((b) => b.toUpperCase() === data.nombre.toUpperCase())) {
-      fallbackBrands.push(data.nombre)
-    }
-    return {
-      id: data.id || fallbackBrands.length,
-      nombre: data.nombre,
-      slug,
-      totalProductos: fallbackProducts.filter((p) => p.brand.toUpperCase() === data.nombre.toUpperCase()).length,
-      activo: true,
-    }
-  }
+  const cleanName = data.nombre.trim()
+  if (!cleanName) return null
 
   try {
-    if (data.id) {
+    let targetId = data.id
+
+    if (targetId) {
+      const slug = await generateUniqueSlug(db, "marcas", cleanName, "marca", targetId)
       await db
-        .prepare("UPDATE marcas SET nombre = ?, slug = ? WHERE id = ?")
-        .bind(data.nombre, slug, data.id)
+        .prepare("UPDATE marcas SET nombre = ?, slug = ?, activo = 1 WHERE id = ?")
+        .bind(cleanName, slug, targetId)
         .run()
     } else {
       const existing = await db
-        .prepare("SELECT id FROM marcas WHERE slug = ? OR nombre = ? COLLATE NOCASE LIMIT 1")
-        .bind(slug, data.nombre)
+        .prepare("SELECT id FROM marcas WHERE nombre = ? COLLATE NOCASE LIMIT 1")
+        .bind(cleanName)
         .first<{ id: number }>()
 
       if (existing) {
+        targetId = existing.id
+        const slug = await generateUniqueSlug(db, "marcas", cleanName, "marca", targetId)
         await db
           .prepare("UPDATE marcas SET nombre = ?, slug = ?, activo = 1 WHERE id = ?")
-          .bind(data.nombre, slug, existing.id)
+          .bind(cleanName, slug, targetId)
           .run()
       } else {
+        const slug = await generateUniqueSlug(db, "marcas", cleanName, "marca")
         await db
           .prepare("INSERT INTO marcas (nombre, slug, activo) VALUES (?, ?, 1)")
-          .bind(data.nombre, slug)
+          .bind(cleanName, slug)
           .run()
+        const created = await db
+          .prepare("SELECT id FROM marcas WHERE slug = ? LIMIT 1")
+          .bind(slug)
+          .first<{ id: number }>()
+        targetId = created?.id
       }
     }
 
+    if (!targetId) return null
+
     const row = await db
       .prepare(`
-        SELECT m.id, m.nombre, m.slug, m.activo, COUNT(p.id) AS total_productos
-        FROM marcas m
-        LEFT JOIN productos p ON p.marca_id = m.id AND p.estado != 'archivado'
-        WHERE m.slug = ?
+        ${BRAND_WITH_COUNT_SELECT}
+        WHERE m.id = ?
         GROUP BY m.id, m.nombre, m.slug, m.activo
         LIMIT 1
       `)
-      .bind(slug)
-      .first<{
-        id: number
-        nombre: string
-        slug: string
-        activo: number
-        total_productos: number
-      }>()
+      .bind(targetId)
+      .first<DbBrandCountRow>()
 
-    if (!row) return null
-
-    return {
-      id: row.id,
-      nombre: row.nombre,
-      slug: row.slug,
-      totalProductos: Number(row.total_productos) || 0,
-      activo: Boolean(row.activo),
-    }
+    return row ? mapBrandRow(row) : null
   } catch (error) {
     console.error("[D1] Error al guardar marca:", error)
     return null
@@ -164,13 +146,7 @@ export async function saveBrand(
  */
 export async function deleteBrand(id: number, env?: unknown): Promise<boolean> {
   const db = getDb(env)
-  if (!db) {
-    if (id > 0 && id <= fallbackBrands.length) {
-      fallbackBrands.splice(id - 1, 1)
-      return true
-    }
-    return false
-  }
+  if (!db) return defaultMemoryRepository.deleteBrand(id)
 
   try {
     await db.prepare("UPDATE marcas SET activo = 0 WHERE id = ?").bind(id).run()
