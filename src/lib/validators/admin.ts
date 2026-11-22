@@ -267,6 +267,7 @@ export interface ValidatedImportRow {
   nombre: string
   marca: string
   modelo: string
+  sku?: string
   categoria: string
   precio: number
   precioAnterior?: number
@@ -274,6 +275,8 @@ export interface ValidatedImportRow {
   badge?: string
   imagen?: string
   descripcion?: string
+  caracteristicasTecnicas?: string
+  contenidoCaja?: string
   esValido: boolean
   idProductoExistente?: number
 }
@@ -315,6 +318,7 @@ export function validateImportCsvInput(body: unknown): ValidationResult<{
       name: row.nombre,
       brand: row.marca,
       model: row.modelo,
+      sku: row.sku,
       category: row.categoria,
       price: row.precio,
       oldPrice: row.precioAnterior,
@@ -322,6 +326,8 @@ export function validateImportCsvInput(body: unknown): ValidationResult<{
       badge: row.badge,
       image: row.imagen,
       description: row.descripcion,
+      technicalSpecs: row.caracteristicasTecnicas,
+      boxContents: row.contenidoCaja,
     })
 
     if (!check.ok) {
@@ -343,6 +349,7 @@ export function validateImportCsvInput(body: unknown): ValidationResult<{
       nombre: check.data.name,
       marca: check.data.brand.toUpperCase(),
       modelo: check.data.model,
+      sku: check.data.sku,
       categoria: check.data.category,
       precio: check.data.price,
       precioAnterior: check.data.oldPrice,
@@ -350,6 +357,8 @@ export function validateImportCsvInput(body: unknown): ValidationResult<{
       badge: check.data.badge,
       imagen: check.data.image,
       descripcion: check.data.description,
+      caracteristicasTecnicas: check.data.technicalSpecs,
+      contenidoCaja: check.data.boxContents,
       esValido: true,
       idProductoExistente,
     })

@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { adminApi } from "@/services/adminApi"
 
 interface AdminLoginProps {
   onLoginSuccess: () => void
@@ -17,22 +18,14 @@ export default function AdminLogin({ onLoginSuccess }: AdminLoginProps) {
     setSubmitting(true)
 
     try {
-      const res = await fetch("/api/admin/auth", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: emailInput, password: passwordInput }),
-      })
-
-      const data = await res.json().catch(() => ({}))
-
-      if (res.ok && data.success) {
-        onLoginSuccess()
-      } else {
-        setLoginError(data.message || "Credenciales incorrectas.")
-      }
-    } catch {
-      setLoginError("No se pudo conectar con el servidor de autenticación. Intenta nuevamente.")
+      await adminApi.login(emailInput, passwordInput)
+      onLoginSuccess()
+    } catch (err: unknown) {
+      setLoginError(
+        err instanceof Error
+          ? err.message
+          : "No se pudo conectar con el servidor de autenticación."
+      )
     } finally {
       setSubmitting(false)
     }

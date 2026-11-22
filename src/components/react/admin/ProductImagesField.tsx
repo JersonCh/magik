@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { optimizarImagenParaWebP } from "../../../lib/imageOptimization"
+import { optimizarImagenParaWebP } from "@/lib/imageOptimization"
+import { AdminApiError, adminApi } from "@/services/adminApi"
 
 interface ProductImagesFieldProps {
   productName: string
@@ -35,28 +36,21 @@ export default function ProductImagesField({
 
     try {
       const optimized = await optimizarImagenParaWebP(file)
-      const formData = new FormData()
-      formData.append("file", optimized)
-      formData.append("nombre", productName || "producto")
-      formData.append("slot", slotKey)
-      formData.append("carpeta", "productos")
-
-      const res = await fetch("/api/admin/upload", {
-        method: "POST",
-        credentials: "same-origin",
-        body: formData,
+      const data = await adminApi.uploadImage(optimized, {
+        nombre: productName || "producto",
+        slot: slotKey,
+        carpeta: "productos",
       })
 
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok || !data.url) {
-        throw new Error(data.message || "No se pudo subir la imagen a R2.")
-      }
-
       const next = [images[0] || "", images[1] || "", images[2] || ""]
-      next[slotIndex] = String(data.url)
+      next[slotIndex] = data.url
       onChangeImages(next.filter(Boolean))
     } catch (err: unknown) {
-      setUploadError(err instanceof Error ? err.message : "Error al procesar la imagen.")
+      if (err instanceof AdminApiError && err.isUnauthorized) {
+        setUploadError("Tu sesión expiró. Recarga para volver a ingresar.")
+      } else {
+        setUploadError(err instanceof Error ? err.message : "Error al procesar la imagen.")
+      }
     } finally {
       setUploadingSlot(null)
     }
@@ -69,12 +63,7 @@ export default function ProductImagesField({
     setUploadError(null)
     if (targetUrl.startsWith("/api/images/")) {
       try {
-        await fetch("/api/admin/upload", {
-          method: "DELETE",
-          credentials: "same-origin",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: targetUrl }),
-        })
+        await adminApi.deleteImage(targetUrl)
       } catch {
         // Si falla la limpieza en R2 no bloqueamos quitar la referencia del producto
       }
