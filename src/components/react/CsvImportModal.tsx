@@ -1,6 +1,5 @@
 import { useState, useRef } from "react"
-import type { Product } from "../../data/products"
-import type { BrandWithCount } from "../../lib/db"
+import type { Product, BrandWithCount } from "@/types/domain"
 import {
   procesarContenidoCsv,
   procesarBufferExcel,
@@ -165,6 +164,7 @@ export default function CsvImportModal({
     try {
       const res = await fetch("/api/admin/import-csv", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           productos: filasAEnviar,

@@ -1,6 +1,5 @@
 import * as XLSX from "xlsx"
-import type { Product } from "../data/products"
-import type { BrandWithCount } from "./db"
+import type { Product, BrandWithCount } from "../types/domain"
 
 export interface FilaCsvProcesada {
   filaNumero: number

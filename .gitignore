@@ -16,6 +16,8 @@ vite.config.*.timestamp-*
 # Variables de entorno y secretos
 .env*
 !.env.example
+.dev.vars
+!.dev.vars.example
 
 # TypeScript
 *.tsbuildinfo

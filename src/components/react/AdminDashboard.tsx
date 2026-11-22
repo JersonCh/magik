@@ -1,98 +1,111 @@
-import { useState, useEffect } from "react"
-import { products as initialProducts, type Product } from "../../data/products"
-import type { BrandWithCount, StoreConfigMap } from "../../lib/db"
-import { defaultStoreConfig } from "../../lib/db"
+import { useState, useEffect, useRef } from "react"
+import { products as initialProducts } from "../../data/products"
+import {
+  getDefaultStoreConfig,
+  type Product,
+  type BrandWithCount,
+  type StoreConfigMap,
+} from "@/types/domain"
 import { exportarCatalogoCsv, exportarCatalogoExcel } from "../../lib/csvHelper"
 import Icon from "./Icon"
 import CsvImportModal from "./CsvImportModal"
+import AdminLogin from "./admin/AdminLogin"
+import OverviewTab from "./admin/OverviewTab"
+import ProductsTab from "./admin/ProductsTab"
+import ProductEditSidebar from "./admin/ProductEditSidebar"
+import BrandsTab from "./admin/BrandsTab"
+import ConfigTab from "./admin/ConfigTab"
+import ConfirmDeleteModal from "./admin/ConfirmDeleteModal"
 
 const A = "/assets/"
 
-const CATEGORY_OPTIONS = [
-  "Cortadoras",
-  "Trimmers",
-  "Shaver",
-  "Cuidado",
-  "Accesorios",
-  "Combos",
-]
-
 export default function AdminDashboard() {
   const [logged, setLogged] = useState(false)
-  const [emailInput, setEmailInput] = useState("admin@magikbarber.pe")
-  const [passwordInput, setPasswordInput] = useState("magik")
-  const [loginError, setLoginError] = useState("")
-
+  const [checkingAuth, setCheckingAuth] = useState(true)
   const [tab, setTab] = useState<"Resumen" | "Productos" | "Marcas" | "Configuración">("Productos")
   const [saved, setSaved] = useState(false)
   const [toastMessage, setToastMessage] = useState("Cambios guardados correctamente")
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Estado de Productos
   const [productList, setProductList] = useState<Product[]>(initialProducts)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [categoryFilter, setCategoryFilter] = useState("Todas")
-  const [brandFilter, setBrandFilter] = useState("Todas")
-  const [statusFilter, setStatusFilter] = useState("Todos")
-
-  const [editingProduct, setEditingProduct] = useState<Product>({
-    ...initialProducts[0],
-  })
+  const [editingProduct, setEditingProduct] = useState<Product>({ ...initialProducts[0] })
   const [isNewProduct, setIsNewProduct] = useState(false)
   const [description, setDescription] = useState("Descripción detallada del equipo profesional para barbería.")
   const [productToDelete, setProductToDelete] = useState<Product | null>(null)
-  const [isCsvModalOpen, setIsCsvModalOpen] = useState(false)
 
   // Estado de Marcas
   const [brandsList, setBrandsList] = useState<BrandWithCount[]>([])
-  const [newBrandName, setNewBrandName] = useState("")
   const [brandToDelete, setBrandToDelete] = useState<BrandWithCount | null>(null)
 
   // Estado de Configuración de la Tienda
-  const [storeConfig, setStoreConfig] = useState<StoreConfigMap>(defaultStoreConfig)
+  const [storeConfig, setStoreConfig] = useState<StoreConfigMap>(() => getDefaultStoreConfig())
 
-  // 1. Validar sesión persistente al montar
+  // Estado de Modales
+  const [isCsvModalOpen, setIsCsvModalOpen] = useState(false)
+
+  // 1. Validar sesión real en el servidor mediante cookie HttpOnly al montar
   useEffect(() => {
-    const session = localStorage.getItem("magik_admin_session")
-    if (session === "true") {
-      setLogged(true)
+    let active = true
+    async function verifySession() {
+      try {
+        const res = await fetch("/api/admin/auth", {
+          method: "GET",
+          credentials: "same-origin",
+        })
+        if (active && res.ok) {
+          const data = await res.json().catch(() => ({}))
+          setLogged(Boolean(data.authenticated))
+        } else if (active) {
+          setLogged(false)
+        }
+      } catch {
+        if (active) setLogged(false)
+      } finally {
+        if (active) setCheckingAuth(false)
+      }
+    }
+    verifySession()
+    return () => {
+      active = false
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
     }
   }, [])
 
-  // 2. Cargar datos desde las APIs de backend
+  // 2. Cargar datos desde las APIs de backend autenticadas
   useEffect(() => {
     if (!logged) return
 
     async function loadData() {
-      // Cargar productos
       try {
-        const resP = await fetch("/api/products")
+        const [resP, resB, resC] = await Promise.all([
+          fetch("/api/admin/products", { credentials: "same-origin" }),
+          fetch("/api/admin/brands", { credentials: "same-origin" }),
+          fetch("/api/admin/config", { credentials: "same-origin" }),
+        ])
+
+        if (resP.status === 401 || resB.status === 401 || resC.status === 401) {
+          setLogged(false)
+          return
+        }
+
         if (resP.ok) {
-          const prods = await resP.json()
-          if (Array.isArray(prods) && prods.length > 0) {
-            setProductList(prods)
+          const dataP = await resP.json()
+          const prods = Array.isArray(dataP.products) ? dataP.products : []
+          setProductList(prods)
+          if (prods.length > 0) {
             setEditingProduct(prods[0])
+            setDescription(prods[0].description || "")
           }
         }
-      } catch (err) {
-        console.warn("Usando catálogo local para productos:", err)
-      }
 
-      // Cargar marcas
-      try {
-        const resB = await fetch("/api/admin/brands")
         if (resB.ok) {
           const dataB = await resB.json()
-          if (dataB.brands && Array.isArray(dataB.brands)) {
+          if (Array.isArray(dataB.brands)) {
             setBrandsList(dataB.brands)
           }
         }
-      } catch (err) {
-        console.warn("Usando marcas locales:", err)
-      }
 
-      // Cargar configuración de tienda
-      try {
-        const resC = await fetch("/api/admin/config")
         if (resC.ok) {
           const dataC = await resC.json()
           if (dataC.config) {
@@ -100,7 +113,8 @@ export default function AdminDashboard() {
           }
         }
       } catch (err) {
-        console.warn("Usando configuración local:", err)
+        console.error("Error al cargar datos del panel:", err)
+        triggerToast("Error de conexión al cargar datos del servidor")
       }
     }
 
@@ -110,113 +124,30 @@ export default function AdminDashboard() {
   const triggerToast = (msg = "Cambios guardados correctamente") => {
     setToastMessage(msg)
     setSaved(true)
-    setTimeout(() => setSaved(false), 2400)
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    toastTimerRef.current = setTimeout(() => setSaved(false), 2600)
   }
 
-  // Exportar catálogo completo a Excel (.xlsx)
-  const handleExportExcel = () => {
+  const handleLogout = async () => {
     try {
-      const uint8 = exportarCatalogoExcel(productList)
-      const blob = new Blob([uint8.buffer as ArrayBuffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      const dateStr = new Date().toISOString().split("T")[0]
-      link.href = url
-      link.setAttribute("download", `catalogo_magik_${dateStr}.xlsx`)
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-      triggerToast("Catálogo exportado exitosamente a Excel (.xlsx)")
-    } catch {
-      triggerToast("Error al exportar archivo Excel")
-    }
-  }
-
-  // Exportar catálogo completo a CSV
-  const handleExportCsv = () => {
-    try {
-      const csvData = exportarCatalogoCsv(productList)
-      const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      const dateStr = new Date().toISOString().split("T")[0]
-      link.href = url
-      link.setAttribute("download", `catalogo_magik_${dateStr}.csv`)
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-      triggerToast("Catálogo exportado exitosamente a CSV")
-    } catch {
-      triggerToast("Error al exportar archivo CSV")
-    }
-  }
-
-  // Recargar datos tras importación masiva exitosa
-  const handleCsvImportSuccess = async () => {
-    try {
-      const resP = await fetch("/api/products")
-      if (resP.ok) {
-        const prods = await resP.json()
-        if (Array.isArray(prods) && prods.length > 0) {
-          setProductList(prods)
-          setEditingProduct(prods[0])
-        }
-      }
-      const resB = await fetch("/api/admin/brands")
-      if (resB.ok) {
-        const dataB = await resB.json()
-        if (dataB.brands && Array.isArray(dataB.brands)) {
-          setBrandsList(dataB.brands)
-        }
-      }
-    } catch (err) {
-      console.warn("Error al refrescar tras importación:", err)
-    }
-    triggerToast("Catálogo sincronizado desde archivo CSV")
-  }
-
-  // --- AUTENTICACIÓN ---
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoginError("")
-
-    try {
-      const res = await fetch("/api/admin/auth", {
+      await fetch("/api/admin/logout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: emailInput, password: passwordInput }),
+        credentials: "same-origin",
       })
-
-      if (res.ok) {
-        localStorage.setItem("magik_admin_session", "true")
-        setLogged(true)
-      } else {
-        const data = await res.json()
-        setLoginError(data.message || "Credenciales incorrectas")
+    } finally {
+      try {
+        localStorage.removeItem("magik_admin_session")
+      } catch {
+        // Ignorar errores de storage
       }
-    } catch {
-      // Fallback local directo
-      if (passwordInput === "magik" || passwordInput === "admin") {
-        localStorage.setItem("magik_admin_session", "true")
-        setLogged(true)
-      } else {
-        setLoginError("Contraseña incorrecta (Usa: magik)")
-      }
+      setLogged(false)
     }
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem("magik_admin_session")
-    setLogged(false)
   }
 
   // --- ACCIONES DE PRODUCTO ---
   const toggleStock = async (product: Product) => {
-    const nextStock = !product.stock
+    const prevStock = product.stock
+    const nextStock = !prevStock
     setProductList((prev) =>
       prev.map((p) => (p.id === product.id ? { ...p, stock: nextStock } : p))
     )
@@ -227,14 +158,27 @@ export default function AdminDashboard() {
     try {
       const res = await fetch("/api/admin/stock", {
         method: "PATCH",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: product.id, stock: nextStock }),
       })
+      if (res.status === 401) {
+        setLogged(false)
+        return
+      }
       if (res.ok) {
         triggerToast(`Stock actualizado: ${nextStock ? "Disponible" : "Agotado"}`)
+      } else {
+        throw new Error("No se pudo actualizar el stock")
       }
     } catch {
-      triggerToast("Stock actualizado localmente")
+      setProductList((prev) =>
+        prev.map((p) => (p.id === product.id ? { ...p, stock: prevStock } : p))
+      )
+      if (editingProduct.id === product.id) {
+        setEditingProduct((prev) => ({ ...prev, stock: prevStock }))
+      }
+      triggerToast("Error al actualizar stock en el servidor")
     }
   }
 
@@ -256,13 +200,19 @@ export default function AdminDashboard() {
     try {
       const res = await fetch("/api/admin/products", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
 
-      if (res.ok) {
-        const data = await res.json()
-        const savedProd: Product = data.product || editingProduct
+      if (res.status === 401) {
+        setLogged(false)
+        return
+      }
+
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.product) {
+        const savedProd: Product = data.product
 
         if (isNewProduct) {
           setProductList((prev) => [savedProd, ...prev])
@@ -275,10 +225,10 @@ export default function AdminDashboard() {
         }
         triggerToast("Producto guardado exitosamente")
       } else {
-        triggerToast("Error al guardar en base de datos")
+        triggerToast(data.message || "Error al guardar en base de datos")
       }
     } catch {
-      triggerToast("Cambios guardados localmente")
+      triggerToast("Error de conexión al guardar producto")
     }
   }
 
@@ -289,9 +239,15 @@ export default function AdminDashboard() {
     try {
       const res = await fetch("/api/admin/products", {
         method: "DELETE",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       })
+
+      if (res.status === 401) {
+        setLogged(false)
+        return
+      }
 
       if (res.ok) {
         setProductList((prev) => prev.filter((p) => p.id !== id))
@@ -299,15 +255,16 @@ export default function AdminDashboard() {
           const remaining = productList.filter((p) => p.id !== id)
           if (remaining.length > 0) {
             setEditingProduct(remaining[0])
+            setDescription(remaining[0].description || "")
           }
         }
         triggerToast(`Producto "${productToDelete.name}" eliminado`)
       } else {
-        triggerToast("No se pudo eliminar el producto")
+        const data = await res.json().catch(() => ({}))
+        triggerToast(data.message || "No se pudo eliminar el producto")
       }
     } catch {
-      setProductList((prev) => prev.filter((p) => p.id !== id))
-      triggerToast(`Producto eliminado localmente`)
+      triggerToast("Error de conexión al eliminar el producto")
     } finally {
       setProductToDelete(null)
     }
@@ -331,28 +288,32 @@ export default function AdminDashboard() {
   }
 
   // --- ACCIONES DE MARCAS ---
-  const handleAddBrand = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const name = newBrandName.trim().toUpperCase()
-    if (!name) return
-
+  const handleAddBrand = async (name: string) => {
     try {
       const res = await fetch("/api/admin/brands", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nombre: name }),
       })
 
-      if (res.ok) {
-        const data = await res.json()
-        if (data.brand) {
-          setBrandsList((prev) => [...prev, data.brand])
-          setNewBrandName("")
-          triggerToast(`Marca ${name} registrada`)
-        }
+      if (res.status === 401) {
+        setLogged(false)
+        return
+      }
+
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.brand) {
+        setBrandsList((prev) => {
+          const exists = prev.some((b) => b.id === data.brand.id)
+          return exists ? prev.map((b) => (b.id === data.brand.id ? data.brand : b)) : [...prev, data.brand]
+        })
+        triggerToast(`Marca ${name} registrada`)
+      } else {
+        triggerToast(data.message || "Error al registrar marca")
       }
     } catch {
-      triggerToast("Error al registrar marca")
+      triggerToast("Error de conexión al registrar marca")
     }
   }
 
@@ -363,17 +324,25 @@ export default function AdminDashboard() {
     try {
       const res = await fetch("/api/admin/brands", {
         method: "DELETE",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       })
 
+      if (res.status === 401) {
+        setLogged(false)
+        return
+      }
+
       if (res.ok) {
         setBrandsList((prev) => prev.filter((b) => b.id !== id))
-        triggerToast(`Marca eliminada`)
+        triggerToast("Marca eliminada")
+      } else {
+        const data = await res.json().catch(() => ({}))
+        triggerToast(data.message || "No se pudo eliminar la marca")
       }
     } catch {
-      setBrandsList((prev) => prev.filter((b) => b.id !== id))
-      triggerToast("Marca eliminada localmente")
+      triggerToast("Error de conexión al eliminar marca")
     } finally {
       setBrandToDelete(null)
     }
@@ -385,85 +354,114 @@ export default function AdminDashboard() {
     try {
       const res = await fetch("/api/admin/config", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(storeConfig),
       })
 
+      if (res.status === 401) {
+        setLogged(false)
+        return
+      }
+
+      const data = await res.json().catch(() => ({}))
       if (res.ok) {
+        if (data.config) setStoreConfig(data.config)
         triggerToast("Configuración de tienda actualizada")
       } else {
-        triggerToast("Error al guardar configuración")
+        triggerToast(data.message || "Error al guardar configuración")
       }
     } catch {
-      triggerToast("Configuración actualizada localmente")
+      triggerToast("Error de conexión al guardar configuración")
     }
   }
 
-  // --- FILTROS DE PRODUCTOS ---
-  const filteredProducts = productList.filter((p) => {
-    const matchesSearch = `${p.name} ${p.brand} ${p.model}`
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase())
-    const matchesCategory =
-      categoryFilter === "Todas" || p.category.toLowerCase() === categoryFilter.toLowerCase()
-    const matchesBrand =
-      brandFilter === "Todas" || p.brand.toUpperCase() === brandFilter.toUpperCase()
-    const matchesStatus =
-      statusFilter === "Todos"
-        ? true
-        : statusFilter === "Disponibles"
-          ? p.stock
-          : statusFilter === "Agotados"
-            ? !p.stock
-            : true
+  // --- EXPORTACIONES ---
+  const handleExportExcel = () => {
+    try {
+      const uint8 = exportarCatalogoExcel(productList)
+      const blob = new Blob([uint8.buffer as ArrayBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      const dateStr = new Date().toISOString().split("T")[0]
+      link.href = url
+      link.setAttribute("download", `catalogo_magik_${dateStr}.xlsx`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      triggerToast("Catálogo exportado exitosamente a Excel (.xlsx)")
+    } catch {
+      triggerToast("Error al exportar archivo Excel")
+    }
+  }
 
-    return matchesSearch && matchesCategory && matchesBrand && matchesStatus
-  })
+  const handleExportCsv = () => {
+    try {
+      const csvData = exportarCatalogoCsv(productList)
+      const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      const dateStr = new Date().toISOString().split("T")[0]
+      link.href = url
+      link.setAttribute("download", `catalogo_magik_${dateStr}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      triggerToast("Catálogo exportado exitosamente a CSV")
+    } catch {
+      triggerToast("Error al exportar archivo CSV")
+    }
+  }
 
-  // Pantalla de Login
-  if (!logged) {
+  const handleCsvImportSuccess = async () => {
+    try {
+      const [resP, resB] = await Promise.all([
+        fetch("/api/admin/products", { credentials: "same-origin" }),
+        fetch("/api/admin/brands", { credentials: "same-origin" }),
+      ])
+      if (resP.status === 401 || resB.status === 401) {
+        setLogged(false)
+        return
+      }
+      if (resP.ok) {
+        const dataP = await resP.json()
+        const prods = Array.isArray(dataP.products) ? dataP.products : []
+        setProductList(prods)
+        if (prods.length > 0) {
+          setEditingProduct(prods[0])
+          setDescription(prods[0].description || "")
+        }
+      }
+      if (resB.ok) {
+        const dataB = await resB.json()
+        if (Array.isArray(dataB.brands)) {
+          setBrandsList(dataB.brands)
+        }
+      }
+    } catch (err) {
+      console.warn("Error al refrescar tras importación:", err)
+    }
+    triggerToast("Catálogo sincronizado desde archivo")
+  }
+
+  if (checkingAuth) {
     return (
       <main className="admin-login">
         <div>
-          <span className="logo-crop">
-            <img src={`${A}logobg.jpg`} alt="Magik Barber Supply" width="88" height="88" />
-          </span>
           <p>ACCESO ADMINISTRATIVO</p>
-          <h1>Gestor de Tienda</h1>
-          <form onSubmit={handleLogin}>
-            <label className="field">
-              <span>Correo de Administrador</span>
-              <input
-                type="email"
-                value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
-                required
-              />
-            </label>
-            <label className="field">
-              <span>Contraseña</span>
-              <input
-                type="password"
-                value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
-                required
-              />
-            </label>
-
-            {loginError && (
-              <div style={{ color: "var(--danger)", fontSize: "11px", marginBottom: "15px" }}>
-                {loginError}
-              </div>
-            )}
-
-            <button type="submit" className="button button--primary">
-              Ingresar al gestor
-            </button>
-          </form>
-          <small>Credenciales iniciales: admin@magikbarber.pe / magik</small>
+          <h1>Verificando sesión...</h1>
         </div>
       </main>
     )
+  }
+
+  // Pantalla de Login si no está autenticado
+  if (!logged) {
+    return <AdminLogin onLoginSuccess={() => setLogged(true)} />
   }
 
   return (
@@ -602,109 +600,17 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ===================== TAB: RESUMEN ===================== */}
+        {/* PESTAÑA RESUMEN */}
         {tab === "Resumen" && (
-          <div>
-            <div className="stats">
-              <div>
-                <span>Total de máquinas y productos</span>
-                <b>{productList.length}</b>
-                <small>{productList.filter((p) => p.stock).length} con stock activo</small>
-              </div>
-              <div>
-                <span>Productos agotados</span>
-                <b style={{ color: "var(--danger)" }}>
-                  {productList.filter((p) => !p.stock).length}
-                </b>
-                <small>Requieren reposición en tienda</small>
-              </div>
-              <div>
-                <span>Marcas registradas</span>
-                <b>{brandsList.length}</b>
-                <small>Distribuidores oficiales en Tacna</small>
-              </div>
-              <div>
-                <span>Equipos en promoción</span>
-                <b>
-                  {
-                    productList.filter(
-                      (p) => p.badge === "Oferta" || (p.oldPrice && p.oldPrice > p.price)
-                    ).length
-                  }
-                </b>
-                <small>Con precio de descuento activo</small>
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
-              <div className="admin-config-card">
-                <h2>Estado de Stock Crítico</h2>
-                {productList.filter((p) => !p.stock).length === 0 ? (
-                  <p style={{ color: "var(--green)", fontSize: "13px" }}>
-                    ✓ Todos los productos del catálogo cuentan con stock disponible.
-                  </p>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                    {productList
-                      .filter((p) => !p.stock)
-                      .slice(0, 5)
-                      .map((p) => (
-                        <div
-                          key={p.id}
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            borderBottom: "1px solid var(--line)",
-                            paddingBottom: "8px",
-                            fontSize: "12px",
-                          }}
-                        >
-                          <div>
-                            <strong>{p.name}</strong> <small>({p.brand})</small>
-                          </div>
-                          <button
-                            type="button"
-                            className="button button--primary"
-                            style={{ padding: "4px 8px", fontSize: "10px" }}
-                            onClick={() => toggleStock(p)}
-                          >
-                            Habilitar stock
-                          </button>
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="admin-config-card">
-                <h2>Parámetros Operativos Actuales</h2>
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px", fontSize: "12px" }}>
-                  <div>
-                    <span style={{ color: "var(--muted)", display: "block", fontSize: "10px" }}>
-                      WHATSAPP OFICIAL DE PEDIDOS
-                    </span>
-                    <strong>+51 {storeConfig.whatsapp_number}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: "var(--muted)", display: "block", fontSize: "10px" }}>
-                      DIRECCIÓN LOCAL TACNA
-                    </span>
-                    <strong>{storeConfig.store_address}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: "var(--muted)", display: "block", fontSize: "10px" }}>
-                      HORARIO DE ATENCIÓN
-                    </span>
-                    <strong>{storeConfig.opening_hours}</strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <OverviewTab
+            productList={productList}
+            brandsList={brandsList}
+            storeConfig={storeConfig}
+            onToggleStock={toggleStock}
+          />
         )}
 
-        {/* ===================== TAB: PRODUCTOS ===================== */}
+        {/* PESTAÑA PRODUCTOS */}
         {tab === "Productos" && (
           <div>
             <div className="stats">
@@ -737,501 +643,74 @@ export default function AdminDashboard() {
             </div>
 
             <div className="admin-grid">
-              {/* Tabla de Productos */}
-              <div className="admin-table">
-                {/* Barra de Filtros */}
-                <div
-                  className="table-toolbar"
-                  style={{ gridTemplateColumns: "1fr 140px 140px 130px", marginBottom: "15px" }}
-                >
-                  <label className="field" style={{ margin: 0 }}>
-                    <input
-                      placeholder="Buscar por nombre, marca o modelo..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </label>
+              <ProductsTab
+                productList={productList}
+                brandsList={brandsList}
+                editingProduct={editingProduct}
+                isNewProduct={isNewProduct}
+                onSelectProduct={(p) => {
+                  setIsNewProduct(false)
+                  setEditingProduct({ ...p })
+                  setDescription(p.description || "")
+                }}
+                onToggleStock={toggleStock}
+                onRequestDeleteProduct={(p) => setProductToDelete(p)}
+              />
 
-                  <label className="field" style={{ margin: 0 }}>
-                    <select
-                      value={categoryFilter}
-                      onChange={(e) => setCategoryFilter(e.target.value)}
-                    >
-                      <option value="Todas">Todas las cat.</option>
-                      {CATEGORY_OPTIONS.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="field" style={{ margin: 0 }}>
-                    <select
-                      value={brandFilter}
-                      onChange={(e) => setBrandFilter(e.target.value)}
-                    >
-                      <option value="Todas">Todas las marcas</option>
-                      {brandsList.map((b) => (
-                        <option key={b.id} value={b.nombre}>
-                          {b.nombre}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="field" style={{ margin: 0 }}>
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                    >
-                      <option value="Todos">Todos</option>
-                      <option value="Disponibles">Disponibles</option>
-                      <option value="Agotados">Agotados</option>
-                    </select>
-                  </label>
-                </div>
-
-                <div
-                  className="table-row table-labels"
-                  style={{ gridTemplateColumns: "minmax(220px, 1fr) 100px 90px 90px 90px" }}
-                >
-                  <span>PRODUCTO</span>
-                  <span>MARCA</span>
-                  <span>PRECIO</span>
-                  <span>STOCK</span>
-                  <span style={{ textAlign: "right" }}>ACCIONES</span>
-                </div>
-
-                {filteredProducts.length === 0 ? (
-                  <div style={{ padding: "40px 0", textAlign: "center", color: "var(--muted)" }}>
-                    No se encontraron productos con los filtros aplicados.
-                  </div>
-                ) : (
-                  filteredProducts.map((p) => (
-                    <div
-                      className="table-row"
-                      key={p.id}
-                      style={{
-                        gridTemplateColumns: "minmax(220px, 1fr) 100px 90px 90px 90px",
-                        background: editingProduct.id === p.id && !isNewProduct ? "var(--ivory-warm)" : "transparent",
-                      }}
-                    >
-                      <div className="table-product">
-                        <img src={p.image} alt={p.name} />
-                        <span>
-                          <strong>{p.name}</strong>
-                          <small>{p.model}</small>
-                        </span>
-                      </div>
-
-                      <span className="admin-brand-chip">{p.brand}</span>
-
-                      <div>
-                        <strong>S/{p.price}</strong>
-                        {p.oldPrice && (
-                          <small style={{ display: "block", color: "var(--muted)", textDecoration: "line-through" }}>
-                            S/{p.oldPrice}
-                          </small>
-                        )}
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => toggleStock(p)}
-                        className={p.stock ? "status" : "status off"}
-                        style={{ cursor: "pointer", border: 0 }}
-                        title="Haz clic para alternar stock"
-                      >
-                        {p.stock ? "Disponible" : "Agotado"}
-                      </button>
-
-                      <div className="table-row-actions">
-                        <button
-                          type="button"
-                          className="btn-edit"
-                          onClick={() => {
-                            setIsNewProduct(false)
-                            setEditingProduct({ ...p })
-                            setDescription(
-                              p.name.includes("Saber")
-                                ? "Motor magnético de 7,200 RPM con cuchilla DLC Black Diamond Carbon."
-                                : "Producto profesional garantizado de alta durabilidad."
-                            )
-                          }}
-                        >
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-delete"
-                          onClick={() => setProductToDelete(p)}
-                          title="Eliminar producto"
-                        >
-                          <Icon name="trash" />
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Panel Lateral de Edición / Creación */}
-              <aside className="edit-panel">
-                <p>{isNewProduct ? "CREAR REGISTRO" : "EDICIÓN EN VIVO"}</p>
-                <h2>{isNewProduct ? "Nuevo producto" : editingProduct.name}</h2>
-
-                <label className="field">
-                  <span>Nombre del producto</span>
-                  <input
-                    value={editingProduct.name}
-                    onChange={(e) =>
-                      setEditingProduct({ ...editingProduct, name: e.target.value })
-                    }
-                  />
-                </label>
-
-                <div className="field-row">
-                  <label className="field">
-                    <span>Marca</span>
-                    <select
-                      value={editingProduct.brand}
-                      onChange={(e) =>
-                        setEditingProduct({ ...editingProduct, brand: e.target.value })
-                      }
-                    >
-                      {brandsList.map((b) => (
-                        <option key={b.id} value={b.nombre}>
-                          {b.nombre}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="field">
-                    <span>Modelo / Subtítulo</span>
-                    <input
-                      value={editingProduct.model}
-                      onChange={(e) =>
-                        setEditingProduct({ ...editingProduct, model: e.target.value })
-                      }
-                    />
-                  </label>
-                </div>
-
-                <div className="field-row">
-                  <label className="field">
-                    <span>Categoría</span>
-                    <select
-                      value={editingProduct.category}
-                      onChange={(e) =>
-                        setEditingProduct({ ...editingProduct, category: e.target.value })
-                      }
-                    >
-                      {CATEGORY_OPTIONS.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="field">
-                    <span>Distintivo (Badge)</span>
-                    <select
-                      value={editingProduct.badge || "Ninguno"}
-                      onChange={(e) =>
-                        setEditingProduct({
-                          ...editingProduct,
-                          badge: e.target.value === "Ninguno" ? undefined : e.target.value,
-                        })
-                      }
-                    >
-                      <option value="Ninguno">Sin distintivo</option>
-                      <option value="Destacado">Destacado</option>
-                      <option value="Oferta">Oferta</option>
-                      <option value="Nuevo">Nuevo</option>
-                      <option value="Combo">Combo</option>
-                    </select>
-                  </label>
-                </div>
-
-                <div className="field-row">
-                  <label className="field">
-                    <span>Precio Venta (S/)</span>
-                    <input
-                      type="number"
-                      value={editingProduct.price}
-                      onChange={(e) =>
-                        setEditingProduct({
-                          ...editingProduct,
-                          price: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </label>
-
-                  <label className="field">
-                    <span>Precio Anterior (S/)</span>
-                    <input
-                      type="number"
-                      placeholder="Opcional"
-                      value={editingProduct.oldPrice || ""}
-                      onChange={(e) =>
-                        setEditingProduct({
-                          ...editingProduct,
-                          oldPrice: e.target.value ? Number(e.target.value) : undefined,
-                        })
-                      }
-                    />
-                  </label>
-                </div>
-
-                <label className="field">
-                  <span>Disponibilidad de Stock</span>
-                  <select
-                    value={editingProduct.stock ? "Disponible" : "Agotado"}
-                    onChange={(e) =>
-                      setEditingProduct({
-                        ...editingProduct,
-                        stock: e.target.value === "Disponible",
-                      })
-                    }
-                  >
-                    <option value="Disponible">Disponible para venta</option>
-                    <option value="Agotado">Agotado temporalmente</option>
-                  </select>
-                </label>
-
-                <label className="field">
-                  <span>URL de Imagen Principal</span>
-                  <input
-                    value={editingProduct.image}
-                    onChange={(e) =>
-                      setEditingProduct({ ...editingProduct, image: e.target.value })
-                    }
-                  />
-                </label>
-
-                <label className="field">
-                  <span>Descripción Técnica</span>
-                  <textarea
-                    rows={4}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                  />
-                </label>
-
-                <button
-                  type="button"
-                  className="button button--primary"
-                  onClick={handleSaveProduct}
-                  style={{ marginTop: "12px" }}
-                >
-                  {isNewProduct ? "Crear producto en catálogo" : "Guardar cambios"}
-                </button>
-              </aside>
+              <ProductEditSidebar
+                isNewProduct={isNewProduct}
+                editingProduct={editingProduct}
+                brandsList={brandsList}
+                description={description}
+                onChangeProduct={(p) => setEditingProduct(p)}
+                onChangeDescription={(desc) => setDescription(desc)}
+                onSaveProduct={handleSaveProduct}
+              />
             </div>
           </div>
         )}
 
-        {/* ===================== TAB: MARCAS ===================== */}
+        {/* PESTAÑA MARCAS */}
         {tab === "Marcas" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: "24px" }}>
-            <div className="admin-table">
-              <div
-                className="table-row table-labels"
-                style={{ gridTemplateColumns: "1fr 120px 80px" }}
-              >
-                <span>MARCA DE BARBERÍA</span>
-                <span>PRODUCTOS</span>
-                <span style={{ textAlign: "right" }}>ACCIONES</span>
-              </div>
-
-              {brandsList.map((b) => (
-                <div
-                  className="table-row"
-                  key={b.id}
-                  style={{ gridTemplateColumns: "1fr 120px 80px" }}
-                >
-                  <strong style={{ fontSize: "13px", letterSpacing: ".05em" }}>{b.nombre}</strong>
-                  <span style={{ color: "var(--muted)" }}>
-                    {b.totalProductos} productos
-                  </span>
-                  <div className="table-row-actions">
-                    <button
-                      type="button"
-                      className="btn-delete"
-                      onClick={() => setBrandToDelete(b)}
-                      title="Eliminar marca"
-                    >
-                      <Icon name="trash" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <aside className="admin-config-card">
-              <h2>Registrar Nueva Marca</h2>
-              <p style={{ fontSize: "12px", color: "var(--muted)", marginBottom: "20px" }}>
-                Las marcas registradas aparecerán inmediatamente en los selectores del catálogo y filtros.
-              </p>
-              <form onSubmit={handleAddBrand}>
-                <label className="field">
-                  <span>Nombre de la Marca (ej. WAHL, BABYLISS, GAMMA+)</span>
-                  <input
-                    placeholder="Escribe el nombre..."
-                    value={newBrandName}
-                    onChange={(e) => setNewBrandName(e.target.value)}
-                    required
-                  />
-                </label>
-
-                <button
-                  type="submit"
-                  className="button button--primary"
-                  style={{ width: "100%", marginTop: "14px" }}
-                >
-                  <Icon name="plus" /> Registrar marca
-                </button>
-              </form>
-            </aside>
-          </div>
+          <BrandsTab
+            brandsList={brandsList}
+            onAddBrand={handleAddBrand}
+            onRequestDeleteBrand={(b) => setBrandToDelete(b)}
+          />
         )}
 
-        {/* ===================== TAB: CONFIGURACIÓN ===================== */}
+        {/* PESTAÑA CONFIGURACIÓN */}
         {tab === "Configuración" && (
-          <form onSubmit={handleSaveConfig} className="admin-config-container">
-            <div className="admin-config-card">
-              <h2>Canales de Atención y Pedidos</h2>
-              <label className="field">
-                <span>Número oficial de WhatsApp (para checkout)</span>
-                <input
-                  value={storeConfig.whatsapp_number}
-                  onChange={(e) =>
-                    setStoreConfig({ ...storeConfig, whatsapp_number: e.target.value })
-                  }
-                  required
-                />
-              </label>
-
-              <label className="field">
-                <span>Dirección física de la tienda (Tacna)</span>
-                <input
-                  value={storeConfig.store_address}
-                  onChange={(e) =>
-                    setStoreConfig({ ...storeConfig, store_address: e.target.value })
-                  }
-                  required
-                />
-              </label>
-
-              <label className="field">
-                <span>Horario de atención comercial</span>
-                <input
-                  value={storeConfig.opening_hours}
-                  onChange={(e) =>
-                    setStoreConfig({ ...storeConfig, opening_hours: e.target.value })
-                  }
-                  required
-                />
-              </label>
-            </div>
-
-            <div className="admin-config-card">
-              <h2>Envíos y Promociones</h2>
-              <label className="field">
-                <span>Texto de barra superior (Announcement bar)</span>
-                <input
-                  value={storeConfig.announcement_bar}
-                  onChange={(e) =>
-                    setStoreConfig({ ...storeConfig, announcement_bar: e.target.value })
-                  }
-                  required
-                />
-              </label>
-
-              <label className="field">
-                <span>Tarifa base de flete (S/)</span>
-                <input
-                  value={storeConfig.shipping_base_price}
-                  onChange={(e) =>
-                    setStoreConfig({ ...storeConfig, shipping_base_price: e.target.value })
-                  }
-                  placeholder="0 para pago en destino"
-                />
-              </label>
-
-              <div style={{ marginTop: "24px" }}>
-                <button type="submit" className="button button--primary" style={{ width: "100%" }}>
-                  <Icon name="check" /> Guardar toda la configuración
-                </button>
-              </div>
-            </div>
-          </form>
+          <ConfigTab
+            storeConfig={storeConfig}
+            onChangeConfig={(cfg) => setStoreConfig(cfg)}
+            onSaveConfig={handleSaveConfig}
+          />
         )}
       </section>
 
       {/* Modal de Confirmación de Eliminación de Producto */}
-      {productToDelete && (
-        <div className="admin-modal-backdrop" onClick={() => setProductToDelete(null)}>
-          <div className="admin-modal-card" onClick={(e) => e.stopPropagation()}>
-            <p className="eyebrow">CONFIRMAR BAJA DE PRODUCTO</p>
-            <h3>¿Eliminar "{productToDelete.name}"?</h3>
-            <p className="desc">
-              Esta acción dará de baja este producto del catálogo público y de la base de datos D1. Los pedidos pasados conservarán su historial intacto.
-            </p>
-            <div className="admin-modal-actions">
-              <button
-                type="button"
-                className="btn-cancel"
-                onClick={() => setProductToDelete(null)}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="btn-danger"
-                onClick={handleDeleteProductConfirm}
-              >
-                Eliminar definitivamente
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDeleteModal
+        isOpen={Boolean(productToDelete)}
+        eyebrow="CONFIRMAR BAJA DE PRODUCTO"
+        title={`¿Eliminar "${productToDelete?.name}"?`}
+        description="Esta acción dará de baja este producto del catálogo público y de la base de datos D1. Los pedidos pasados conservarán su historial intacto."
+        onConfirm={handleDeleteProductConfirm}
+        onCancel={() => setProductToDelete(null)}
+      />
 
       {/* Modal de Confirmación de Eliminación de Marca */}
-      {brandToDelete && (
-        <div className="admin-modal-backdrop" onClick={() => setBrandToDelete(null)}>
-          <div className="admin-modal-card" onClick={(e) => e.stopPropagation()}>
-            <p className="eyebrow">CONFIRMAR BAJA DE MARCA</p>
-            <h3>¿Eliminar marca "{brandToDelete.nombre}"?</h3>
-            <p className="desc">
-              Se dará de baja la marca. Si existen productos asociados a esta marca, seguirán existiendo pero la marca ya no aparecerá en el filtro activo.
-            </p>
-            <div className="admin-modal-actions">
-              <button
-                type="button"
-                className="btn-cancel"
-                onClick={() => setBrandToDelete(null)}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="btn-danger"
-                onClick={handleDeleteBrandConfirm}
-              >
-                Eliminar marca
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDeleteModal
+        isOpen={Boolean(brandToDelete)}
+        eyebrow="CONFIRMAR BAJA DE MARCA"
+        title={`¿Eliminar marca "${brandToDelete?.nombre}"?`}
+        description="Se dará de baja la marca. Si existen productos asociados a esta marca, seguirán existiendo pero la marca ya no aparecerá en el filtro activo."
+        confirmText="Eliminar marca"
+        onConfirm={handleDeleteBrandConfirm}
+        onCancel={() => setBrandToDelete(null)}
+      />
 
-      {/* Modal de Importación Masiva CSV */}
+      {/* Modal de Importación Masiva Excel / CSV */}
       <CsvImportModal
         isOpen={isCsvModalOpen}
         productos={productList}

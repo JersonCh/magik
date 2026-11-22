@@ -1,21 +1,6 @@
-export interface Product {
-  id: number
-  name: string
-  brand: string
-  model: string
-  price: number
-  oldPrice?: number
-  image: string
-  category: string
-  stock: boolean
-  badge?: string
-  variant?: string
-}
+import { DEFAULT_WHATSAPP_NUMBER, type Product, type CartItem, type ProductVariant } from "../types/domain"
 
-export interface CartItem extends Product {
-  quantity: number
-  selectedVariant?: string
-}
+export type { Product, CartItem, ProductVariant }
 
 const A = "/assets/"
 
@@ -128,5 +113,5 @@ export const brands = [
   "GENÉRICO",
 ]
 
-export const WHATSAPP_NUMBER = "51900000000"
+export const WHATSAPP_NUMBER = DEFAULT_WHATSAPP_NUMBER
 

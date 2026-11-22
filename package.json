@@ -9,6 +9,7 @@
     "preview": "astro preview",
     "dev:vite": "vite",
     "build:vite": "vite build",
+    "typecheck": "tsc --noEmit",
     "format": "oxfmt"
   },
   "dependencies": {

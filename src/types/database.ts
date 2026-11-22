@@ -1,3 +1,15 @@
+export interface D1PreparedStatement {
+  bind(...values: unknown[]): D1PreparedStatement
+  first<T = unknown>(colName?: string): Promise<T | null>
+  all<T = unknown>(): Promise<{ results: T[]; success: boolean }>
+  run(): Promise<{ success: boolean; meta: unknown }>
+}
+
+export interface D1Database {
+  prepare(query: string): D1PreparedStatement
+  batch<T = unknown>(statements: D1PreparedStatement[]): Promise<Array<{ results: T[]; success: boolean }>>
+}
+
 export interface DbBrand {
   id: number
   nombre: string

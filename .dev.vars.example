@@ -1,0 +1,5 @@
+# Variables locales para Cloudflare Wrangler / Astro dev (copiar a .dev.vars)
+# NUNCA subir .dev.vars con credenciales reales al repositorio.
+ADMIN_EMAIL=admin@magikbarber.pe
+ADMIN_PASSWORD=cambia-esta-clave-local
+ADMIN_SESSION_SECRET=genera-un-secreto-aleatorio-de-al-menos-32-caracteres
